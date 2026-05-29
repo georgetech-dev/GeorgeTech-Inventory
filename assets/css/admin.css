@@ -1,0 +1,146 @@
+/* Navigation Dropdown Support */
+.dropdown-menu-box {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  min-width: 180px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  margin-top: 10px;
+  z-index: 1000;
+  padding: 10px 0;
+  border: 1px solid #eee;
+}
+.dropdown-menu-box a {
+  display: block;
+  padding: 10px 20px;
+  text-decoration: none;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+}
+.dropdown-menu-box a:hover { background: #f4f7f6; color: #004a99; }
+
+/* Flex alignment for the injected nav */
+nav {
+  background: #fff;
+  padding: 10px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+/* Buttons */
+    button { 
+      padding: 10px 18px; 
+      border-radius: 6px; 
+      border: none; 
+      font-weight: 600; 
+      cursor: pointer; 
+      transition: 0.2s;
+    }
+    .btn-primary { background: var(--primary-blue); color: white; }
+    .btn-primary:hover { background: #003a7a; }
+    .btn-accent { background: var(--accent-orange); color: white; }
+    .btn-accent:hover { background: #e67e00; }
+    .btn-outline { background: transparent; border: 1px solid #ccc; color: #666; }
+    .btn-outline:hover { background: #eee; }
+    .btn-danger { background: #ef4444; color: white; }
+
+
+
+   /* =========================================================
+   MOBILE RESPONSIVENESS: ADMIN HEADER (MAX-WIDTH: 768px)
+========================================================= */
+@media (max-width: 768px) {
+    /* 1. SLIM TOP BAR */
+    nav[style] {
+        padding: 10px 15px !important;
+        position: fixed !important;
+        top: 0; left: 0; right: 0;
+        z-index: 1000;
+        height: 65px;
+        box-sizing: border-box;
+        display: flex !important;
+        flex-direction: row !important; /* Keep horizontal */
+    }
+    /* Prevent page content from sliding under fixed bar */
+    body { padding-top: 65px !important; }
+
+    /* 2. LOGO AS MENU BUTTON */
+    .nav-left span { display: none !important; } /* Hide names/titles */
+    .nav-left .logo { cursor: pointer; position: relative; z-index: 1001; }
+    .nav-left .logo img { height: 40px !important; }
+    
+    /* 3. TOP RIGHT REORDERING */
+    .nav-right { 
+        gap: 10px !important; 
+        flex-direction: row !important; /* Keep horizontal */
+    }
+    
+    /* Swap the flex order so Logout is on left, User is on Far Right */
+    #nav-logout-btn { 
+        order: 1 !important; 
+        padding: 6px 12px !important; 
+        font-size: 13px !important; 
+    }
+    .nav-user { 
+        order: 1 !important; 
+        border-right: none !important; 
+        padding-right: 0 !important; 
+    }
+    .nav-user .nav-name { display: inline-block !important; font-size: 13px !important; }
+    .nav-user .nav-avatar { width: 32px !important; height: 32px !important; }
+
+    /* 4. THE SLIDE-OUT SIDEBAR */
+    /* Pull the Hub Button and Links Container off-screen */
+    .nav-right > button:not(#nav-logout-btn),
+    .nav-right > div[style*="relative"] {
+        position: fixed !important;
+        left: -300px; 
+        width: 250px !important;
+        background: white !important;
+        z-index: 999;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 15px rgba(0,0,0,0.15) !important;
+        display: block !important;
+        margin: 0 !important;
+    }
+
+    /* Slot the Hub Button at the top of the sidebar */
+    .nav-right > button:not(#nav-logout-btn) {
+        top: 65px !important; 
+        height: 55px !important;
+        border-radius: 0 !important;
+        border-bottom: 1px solid #eee !important;
+        text-align: left !important;
+        padding-left: 20px !important;
+        font-size: 15px !important;
+    }
+
+    /* Slot the Quick Links below the Hub Button */
+    .nav-right > div[style*="relative"] {
+        top: 120px !important;
+        bottom: 0 !important;
+    }
+
+    /* Force the Quick Links Dropdown to stay open as a flat menu */
+    #nav-drop-trigger { display: none !important; }
+    .dropdown-menu-box {
+        display: block !important;
+        position: static !important;
+        box-shadow: none !important;
+        border: none !important;
+        margin-top: 0 !important;
+        width: 100% !important;
+    }
+    .dropdown-menu-box a { padding: 15px 20px !important; border-bottom: 1px solid #f8f9fa !important; font-size: 15px !important;}
+
+    /* 5. TOGGLE OPEN STATE */
+    body.sidebar-open .nav-right > button:not(#nav-logout-btn),
+    body.sidebar-open .nav-right > div[style*="relative"] {
+        left: 0 !important;
+    }
+}

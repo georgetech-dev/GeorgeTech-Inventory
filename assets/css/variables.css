@@ -1,0 +1,36 @@
+/* This sheet is for all masters and must load first */
+
+/* Light (default) */
+:root {
+  --background-main: #F9F6F2;
+  --background-alt: #EFE9E4;
+  --text-primary: #333333;
+  --text-secondary: #5C5C5C;
+  --accent-teal: #2A6F7B;
+  --highlight-amber: #D97706;
+  --frame-neutral: #E6DED7;
+  --tile-background: #FFFFFF;
+  --nav-text: White;
+  --nav-background: rgba(10, 44, 102, 0.95) ;
+  --text-banner-primary: White;
+  --text-banner-secondary: White;
+  --primary-blue: rgba(10, 44, 102, 0.95);
+  --accent-orange: #D97706;
+}
+
+/* Dark Mode */
+.dark-mode {
+  --background-main: #1E1E1E;
+  --background-alt: #2A2A2A;
+  --text-primary: #F5F5F5;
+  --text-secondary: #CCCCCC;
+  --accent-teal: #4DB6AC;
+  --highlight-amber: #F59E0B;
+  --frame-neutral: #333333;
+  --tile-background: #FFFFFF;
+  --nav-text: Black;
+  --nav-background: rgba(10, 44, 102, 0.95) ;
+  --text-banner-primary:;
+  --text-banner-secondary:;
+}
+
