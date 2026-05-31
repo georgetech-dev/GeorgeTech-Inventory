@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FieldHub Inventory - Login</title>
+    
+    <link rel="stylesheet" href="assets/css/variables.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* Standalone styles to center the login box nicely on the screen */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: var(--bg-color, #f4f7f6); /* Fallback if variable is missing */
+            font-family: Arial, sans-serif;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-container h1 {
+            margin-top: 0;
+            color: var(--primary-color, #2c3e50);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color, #007bff);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .login-btn:hover {
+            background-color: var(--secondary-color, #0056b3);
+        }
+
+        #error-message {
+            color: #dc3545;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h1>FieldHub Inventory</h1>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="name@company.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="login-btn" id="submit-btn">Sign In</button>
+            <div id="error-message"></div>
+        </form>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. INITIALIZE SUPABASE
+        // ==========================================
+        // IMPORTANT: Replace these with your actual Supabase Project URL and Anon Key
+        const SUPABASE_URL = 'https://lgchqleltppfdgtpgsbj.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_ZHBBlxQVW0MBUUwQ5Kv1Aw_uufRzvu1';
+      
+        
+        // Changed from 'supabase' to 'db' to prevent naming collision
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ==========================================
+        // 2. CHECK IF ALREADY LOGGED IN
+        // ==========================================
+        async function checkSession() {
+            const { data: { session } } = await db.auth.getSession();
+            if (session) {
+                // If they are already logged in, send them straight to the inventory
+                window.location.href = 'inventory.html';
+            }
+        }
+        checkSession();
+
+        // ==========================================
+        // 3. HANDLE LOGIN FORM SUBMISSION
+        // ==========================================
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent the page from reloading
+            
+            // Reset UI
+            errorMessage.style.display = 'none';
+            submitBtn.textContent = 'Signing in...';
+            submitBtn.disabled = true;
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Attempt login via Supabase Auth (using 'db' now)
+            const { data, error } = await db.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                // Show error message
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+                submitBtn.textContent = 'Sign In';
+                submitBtn.disabled = false;
+            } else {
+                // Success! Redirect to the main app
+                window.location.href = 'inventory.html';
+            }
+        });
+    </script>
+</body>
+</html>

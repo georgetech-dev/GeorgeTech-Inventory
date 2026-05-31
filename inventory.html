@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory | Warm Right Ltd</title>
-    <link rel="icon" href="../assets/images/favicon.png">
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png">
+    <link rel="manifest" href="assets/images/site.webmanifest">
+
     <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/variables.css">  
     <link rel="stylesheet" href="../assets/css/admin.css">
@@ -20,7 +25,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <script>window.adminPageTitle = "Inventory Management";</script>
-    <script src="../assets/js/admin-include.js"></script>
 
     <style>        
         /* DESKTOP STYLES FOR FAST RETURN */
@@ -103,7 +107,7 @@
 </head>
 <body style="visibility: hidden;">
     
-    <div id="admin-header-container"></div>
+ 
     
     <div class="container-fluid" id="inventoryContainer">
 
@@ -118,6 +122,7 @@
             <div class="header-actions">
                 <button class="btn-primary app-add-btn" onclick="toggleFilterToolbar()">Change view</button>
                 <button class="btn-primary app-add-btn" onclick="openAddItemModal()">+ Add</button>
+                <button class="btn-primary app-add-btn" onclick="logoutUser()">Logout</button>
             </div>
         </div>
         
@@ -1146,10 +1151,7 @@
     <script src="../assets/js/inventory.js"></script>
     <script>
 
-document.addEventListener('DOMContentLoaded', () => {
-        // THEN check the role
-        window.requireRole(['admin', 'engineer']);
-    });
+
         window.addEventListener('pageshow', function() {
             setTimeout(function() {
                 const filterBox = document.getElementById("searchTypeFilter");
@@ -1212,17 +1214,26 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('resize', updateMobileFabs);
         window.addEventListener('orientationchange', updateMobileFabs);
 
+async function logoutUser() {
+    // 1. Sign out of Supabase
+    await window.db.auth.signOut();
+    
+    // 2. Clear Local Storage (this kills any ghost sessions)
+    localStorage.clear();
+    
+    // 3. Force redirect to login
+    window.location.href = 'login.html';
+}
+        
         async function checkSecurity() {
             const lib = window.supabase || window.Supabase;
             if (!lib) { setTimeout(checkSecurity, 50); return; }
             window.db = lib.createClient(
-                'https://axampuprcnauxbbijmmt.supabase.co', 
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4YW1wdXByY25hdXhiYmlqbW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NDgyNjUsImV4cCI6MjA5MzMyNDI2NX0.Er1hMQbaXnR4hzHfR2my0SmtwUcUs49HaCVqYwMBHuQ'
+                'https://lgchqleltppfdgtpgsbj.supabase.co', 
+                'sb_publishable_ZHBBlxQVW0MBUUwQ5Kv1Aw_uufRzvu1'
             );
             const { data: { session } } = await window.db.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; } 
-            await window.loadAdminHeader(session);
-            await window.loadAdminFooter();
             document.body.style.visibility = 'visible';
             initInventory();
             updateMobileFabs();
@@ -1231,6 +1242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         checkSecurity();
     </script>
-    <div id="admin-footer-container"></div>
+    
 </body>
 </html>
