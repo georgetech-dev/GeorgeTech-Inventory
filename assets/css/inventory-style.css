@@ -6,6 +6,7 @@
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: #f8fafc;
+    margin: 0;
 }
 
 #inventoryContainer { 
@@ -13,6 +14,14 @@ body {
     margin: 0 auto; 
     padding: 30px; 
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.inventory-footer {
+    padding: 34px 16px 120px;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .inventory-page { display: none; }
@@ -1046,12 +1055,27 @@ body:has(.modal[style*="display:block"]) {
 }
 
 #itemDetailsModal .item-detail-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
     grid-column: auto !important;
     grid-row: auto !important;
     align-self: start !important;
     position: static !important;
-    width: 115px !important;
+    width: 104px !important;
+    min-width: 104px !important;
+    max-width: 104px !important;
     padding-top: 0 !important;
+}
+
+#itemDetailsModal .item-detail-actions button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 #itemDetailsModal .item-detail-tags-block label {
@@ -1435,6 +1459,36 @@ body:has(.modal[style*="display:block"]) {
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
+}
+
+@media (max-width: 768px) {
+    #inventoryContainer {
+        padding: 8px 10px 0 !important;
+    }
+
+    .inventory-nav-bar {
+        margin-bottom: 10px !important;
+    }
+
+    .inventory-footer {
+        padding-bottom: 130px;
+    }
+
+    #itemDetailsModal .item-detail-modal-content {
+        width: min(92vw, 430px) !important;
+        max-width: 430px !important;
+        overflow-x: hidden !important;
+    }
+
+    #itemDetailsModal .item-detail-body {
+        padding: 18px 20px 22px !important;
+        overflow-x: hidden !important;
+    }
+
+    #itemDetailsModal .item-detail-lower {
+        grid-template-columns: minmax(0, 1fr) 104px !important;
+        gap: 10px !important;
+    }
 }
 
 

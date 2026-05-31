@@ -3858,7 +3858,7 @@ window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId
         if (match) { document.getElementById("assignItemSelect").value = match.id; }
         else { customAlert("No assignee profile found matching that tag.", "Not Found"); }
 
-    } else if (targetInputId === 'itemLocationSelect' || targetInputId === 'addItemLocationTunnel') {
+    } else if (targetInputId === 'itemLocationSelect' || targetInputId === 'addItemLocationTunnel' || targetInputId === 'itemLocationTunnel') {
         const match = findLocationByScanToken(cleanToken);
         if (match) { 
             window.updateLocationDropdownUI("itemLocationSelect", match); 
