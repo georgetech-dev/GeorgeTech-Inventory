@@ -2,7 +2,7 @@ const CACHE_NAME = 'FieldHub-Inventory-v1';
 
 // These are the core files the app NEEDS to boot up offline.
 const urlsToCache = [
-  './inventory.html',
+  './index.html',
   './assets/css/variables.css',
   './assets/css/admin.css',
   './assets/css/inventory-style.css',
