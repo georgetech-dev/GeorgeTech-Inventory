@@ -1,7 +1,7 @@
 {
-  "name": "Warm Right Ltd Engineer's Portal",
-  "short_name": "Engineer Hub",
-  "start_url": "./admin/admin-landed.html",
+  "name": "FieldHub Inventory",
+  "short_name": "FieldHub Inventory",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#004a99",
