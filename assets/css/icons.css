@@ -1,0 +1,146 @@
+/* Base class for all icons */
+.icon {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    vertical-align: middle;
+}
+
+
+
+
+
+
+/* Individual icon classes mapped to your SVG files */
+.icon-binoculars-duotone {
+    background-image: url('../icons/binoculars-duotone.svg');
+}
+
+.icon-camera-duotone {
+    background-image: url('../icons/camera-duotone.svg');
+}
+
+.icon-chart-line-up-duotone {
+    background-image: url('../icons/chart-line-up-duotone.svg');
+}
+
+.icon-chat-circle-dots-duotone {
+    background-image: url('../icons/chat-circle-dots-duotone.svg');
+}
+
+.icon-cloud-arrow-down-duotone {
+    background-image: url('../icons/cloud-arrow-down-duotone.svg');
+}
+
+.icon-cloud-arrow-up-duotone {
+    background-image: url('../icons/cloud-arrow-up-duotone.svg');
+}
+
+.icon-cloud-check-duotone {
+    background-image: url('../icons/cloud-check-duotone.svg');
+}
+
+.icon-cloud-slash-duotone {
+    background-image: url('../icons/cloud-slash-duotone.svg');
+}
+
+.icon-cloud-warning-duotone {
+    background-image: url('../icons/cloud-warning-duotone.svg');
+}
+
+.icon-cloud-x-duotone {
+    background-image: url('../icons/cloud-x-duotone.svg');
+}
+
+.icon-file-plus-duotone {
+    background-image: url('../icons/file-plus-duotone.svg');
+}
+
+.icon-folder-open-duotone {
+    background-image: url('../icons/folder-open-duotone.svg');
+}
+
+.icon-folder-plus-duotone {
+    background-image: url('../icons/folder-plus-duotone.svg');
+}
+
+.icon-gear-duotone {
+    background-image: url('../icons/gear-duotone.svg');
+}
+
+.icon-notepad-duotone {
+    background-image: url('../icons/notepad-duotone.svg');
+}
+
+.icon-tag-chevron-duotone {
+    background-image: url('../icons/tag-chevron-duotone.svg');
+}
+
+.icon-tag-duotone {
+    background-image: url('../icons/tag-duotone.svg');
+}
+
+.icon-tilde-duotone {
+    background-image: url('../icons/tilde-duotone.svg');
+}
+
+.icon-tree-view-duotone {
+    background-image: url('../icons/tree-view-duotone.svg');
+}
+
+.icon-user-circle-check-duotone {
+    background-image: url('../icons/user-circle-check-duotone.svg');
+}
+
+
+.icon-scan-duotone {
+    background-image: url('../icons/scan-duotone.svg');
+}
+
+.icon-flow-arrow-duotone {
+    background-image: url('../icons/flow-arrow-duotone.svg');
+}
+
+.icon-download-duotone {
+    background-image: url('../icons/download-duotone.svg');
+}
+
+.icon-globe-duotone {
+    background-image: url('../icons/globe-duotone.svg');
+}
+
+.icon-lightning-a-duotone {
+    background-image: url('../icons/lightning-a-duotone.svg');
+}
+
+.icon-upload-duotone {
+    background-image: url('../icons/upload-duotone.svg');
+}
+.icon-file-arrow-up-duotone {
+    background-image: url('../icons/file-arrow-up-duotone.svg');
+}   
+
+
+.icon-list-numbers-duotone {
+    background-image: url('../icons/list-numbers-duotone.svg');
+}
+
+.icon-sneaker-move-duotone {
+    background-image: url('../icons/sneaker-move-duotone.svg');
+}
+
+.icon-user-plus-duotone {
+    background-image: url('../icons/user-plus-duotone.svg');
+}
+.icon-arrow-u-up-left-duotone {
+    background-image: url('../icons/arrow-u-up-left-duotone.svg');
+}
+.icon-trash-simple-duotone {
+    background-image: url('../icons/trash-simple-duotone.svg');
+}
+.icon-copy-duotone {
+    background-image: url('../icons/copy-duotone.svg');
+}

@@ -16,7 +16,7 @@ localDB.version(3).stores({
     jobs: 'id, status, engineer_id, scheduled_date',
     sync_queue: '++id, action, table, payload, created_at, status',
     sync_photos_queue: '++id, record_id, record_type, bucket, file_name, base64_data, is_primary, status',
-    audit_logs: 'id, created_at, action_type' // <--- NEW LINE
+    audit_logs: 'id, created_at, action_type'
 });
 
 // Global state tracker
@@ -35,7 +35,6 @@ function initOfflineEngine() {
             });
         });
     }
-
 
     // Create the status pill if it doesn't exist
     if (!document.querySelector('.status-indicator')) {
@@ -65,21 +64,21 @@ function initOfflineEngine() {
     });
 }
 
-// 3. Status Pill Controller
+// 3. Status Pill Controller (Updated for HTML Icons)
 function updateNetworkUI(isOnline) {
     const statusBox = document.querySelector('.status-indicator');
     if (!statusBox) return;
 
     if (isOnline) {
         statusBox.style.background = "#22c55e"; // Green
-        statusBox.textContent = "Online - Synced";
+        statusBox.innerHTML = '<div class="icon icon-cloud-check-duotone"></div>';
     } else {
         statusBox.style.background = "#ef4444"; // Red
-        statusBox.textContent = "Offline - Saving Locally";
+        statusBox.innerHTML = '<div class="icon icon-cloud-slash-duotone"></div>';
     }
 }
 
-// Global helper for system messages (Strict Offline-Enforcement)
+// Global helper for system messages (Strict Offline-Enforcement with HTML Injection)
 window.setStatus = function(mode, msg) {
     const statusBox = document.querySelector('.status-indicator');
     if (!statusBox) return;
@@ -87,21 +86,21 @@ window.setStatus = function(mode, msg) {
     // Strict override: Never show green/connected if physically offline!
     if (!window.isAppOnline && mode === "connected") {
         mode = "error";
-        msg = "Offline - Saving Locally";
+        msg = '<div class="icon icon-cloud-slash-duotone"></div>';
     }
 
     if (mode === "syncing") statusBox.style.background = "#ff8c00"; // Orange
     else if (mode === "error") statusBox.style.background = "#ef4444"; // Red
     else statusBox.style.background = "#22c55e"; // Green
 
-    statusBox.textContent = msg;
+    statusBox.innerHTML = msg;
 }
 
 // 5. Global Data Down-Sync (Downloads Supabase -> Saves to Dexie)
 window.syncDatabaseToLocal = async function() {
     if (!window.isAppOnline) return; // Abort if offline
 
-    window.setStatus("syncing", "Downloading database...");
+    window.setStatus("syncing", '<div class="icon icon-cloud-arrow-down-duotone"></div>');
     
     try {
         console.log("🔄 Starting Down-Sync...");
@@ -154,19 +153,17 @@ window.syncDatabaseToLocal = async function() {
             console.log(`📥 Synced ${auditData.length} Audit Logs`);
         } else { console.warn("⚠️ Audit Logs sync failed:", auditErr); }
 
-
         console.log("✅ Offline Database fully synced with Supabase!");
-        window.setStatus("connected", "Online - Synced");
+        window.setStatus("connected", '<div class="icon icon-cloud-check-duotone"></div>');
 
         // Tell the UI to refresh its arrays now that we have fresh data
         if (typeof refreshAllDataFromLocal === "function") refreshAllDataFromLocal();
 
     } catch (err) {
         console.error("Down-sync failed critically:", err);
-        window.setStatus("error", "Sync Failed");
+        window.setStatus("error", '<div class="icon icon-cloud-warning-duotone"></div>');
     }
 };
-
 
 // Auto-start the engine when the script loads
 document.addEventListener('DOMContentLoaded', initOfflineEngine);
@@ -221,15 +218,18 @@ window.offlineSafeWrite = async function(action, table, payload, recordId = null
     }
 };
 
-// 7. The Queue Processor (Upgraded with Photo Sync)
+// 7. The Queue Processor (Upgraded with Photo Sync & HTML Status Components)
 window.processSyncQueue = async function() {
-    if (!window.isAppOnline) { window.setStatus("error", "Offline - Changes Saved Locally"); return; }
-    
+    if (!window.isAppOnline) {
+        window.setStatus("error", '<div class="icon icon-floppy-disk-back-duotone"></div>');
+        return;
+    }
+
     try {
         // --- A. PROCESS NORMAL DATA ---
         const pendingTasks = await localDB.sync_queue.where('status').equals('pending').toArray();
         if (pendingTasks.length > 0) {
-            window.setStatus("syncing", `Syncing ${pendingTasks.length} data changes...`);
+            window.setStatus("syncing", `<span style="margin-right: 5px; font-weight: bold;">${pendingTasks.length}</span><div class="icon icon-cloud-arrow-up-duotone"></div>`);
             for (const task of pendingTasks) {
                 let error = null;
                 const syncPayload = sanitizeSyncPayload(task.table, task.payload);
@@ -249,7 +249,7 @@ window.processSyncQueue = async function() {
         // --- B. PROCESS OFFLINE PHOTOS ---
         const pendingPhotos = await localDB.sync_photos_queue.where('status').equals('pending').toArray();
         if (pendingPhotos.length > 0) {
-            window.setStatus("syncing", `Uploading ${pendingPhotos.length} photos...`);
+            window.setStatus("syncing", `<span style="margin-right: 5px; font-weight: bold;">${pendingPhotos.length} Photos</span><div class="icon icon-cloud-arrow-up-duotone"></div>`);
             for (const photo of pendingPhotos) {
                 try {
                     // Convert text back into an image file
@@ -308,8 +308,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // Stash the event so it can be triggered later.
     deferredPrompt = e;
     
-    // Optional: Show your custom install button
-    // e.g., document.getElementById('installAppBtn').style.display = 'block';
     console.log("PWA Install ready. Button can be clicked.");
 });
 
@@ -323,8 +321,6 @@ window.triggerAppInstall = async function() {
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
             console.log('User accepted the install prompt');
-            // Hide the button once installed
-            // document.getElementById('installAppBtn').style.display = 'none';
         } else {
             console.log('User dismissed the install prompt');
         }
@@ -339,6 +335,5 @@ window.triggerAppInstall = async function() {
 // 3. Listen for successful installation
 window.addEventListener('appinstalled', () => {
     console.log('PWA was installed successfully');
-    // Hide the button permanently
     deferredPrompt = null;
 });

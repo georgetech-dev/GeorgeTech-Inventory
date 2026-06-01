@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory | Warm Right Ltd</title>
+    <title>Inventory | FieldHub</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png">
@@ -11,9 +11,8 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#004a99">
     <link rel="stylesheet" href="../assets/css/variables.css">
-    <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/inventory-style.css">
-
+    <link rel="stylesheet" href="../assets/css/icons.css">
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="../assets/js/offline-engine.js"></script>
 
@@ -101,11 +100,82 @@
             .fab-stack.open { opacity: 1; visibility: visible; transform: translateY(0); }
             .fab-mini { width: 44px; height: 44px; background: #10b981; font-size: 18px; }
         }
+        /* Wrapper to keep things contained */
+.custom-dropdown {
+  position: relative;
+  display: inline-block;
+  width: auto;
+  margin-bottom: 0;
+}
+
+/* The Icon-Only Button */
+.dropdown-trigger {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.dropdown-trigger:hover {
+  background-color: #f3f4f6;
+}
+
+/* The Hidden Menu */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  padding: 8px 0;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  min-width: 200px; /* Gives enough room for the text */
+  z-index: 50;
+
+  /* Hidden by default */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+}
+
+/* When the menu is open */
+.custom-dropdown.open .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Individual List Items */
+.dropdown-item {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Space between icon and text */
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.dropdown-item.selected {
+  background-color: #e5e7eb;
+}
     </style>
 </head>
 <body style="visibility: hidden;">
-
-
 
     <div class="container-fluid" id="inventoryContainer">
 
@@ -132,36 +202,56 @@
 
         <nav class="inventory-nav-bar">
             <a class="tab-link active" id="tab-items" onclick="showPage('pageItems')" title="Items Browser">
-                <span class="tab-icon">🔍</span><span class="tab-text">Items</span>
+                <span class="tab-icon"><div class="icon icon-binoculars-duotone"></div></span><span class="tab-text">Items</span>
             </a>
             <a class="tab-link" id="tab-locations" onclick="showPage('pageLocations')" title="Manage Locations">
-                <span class="tab-icon">📦</span><span class="tab-text">Locations</span>
+                <span class="tab-icon"><div class="icon icon-folder-open-duotone"></div></span><span class="tab-text">Locations</span>
             </a>
             <a class="tab-link" id="tab-temp-locations" onclick="showPage('pageTempLocations')" title="Assigned Log">
-                <span class="tab-icon">🔄</span><span class="tab-text">Assigned</span>
+                <span class="tab-icon"><div class="icon icon-user-circle-check-duotone"></div></span><span class="tab-text">Assigned</span>
             </a>
             <a class="tab-link" id="tab-tags" onclick="showPage('pageTags')" title="Manage Tags">
-                <span class="tab-icon">🏷️</span><span class="tab-text">Tags</span>
+                <span class="tab-icon"><div class="icon icon-tag-duotone"></div></span><span class="tab-text">Tags</span>
             </a>
             <a class="tab-link" id="tab-categories" onclick="showPage('pageCategories')" title="Manage Categories">
-                <span class="tab-icon">🗂️</span><span class="tab-text">Categories</span>
+                <span class="tab-icon"><div class="icon icon-tag-chevron-duotone"></div></span><span class="tab-text">Categories</span>
             </a>
             <a class="tab-link" id="tab-settings" onclick="showPage('pageSettings')" title="Settings & Backup">
-                <span class="tab-icon">⚙️</span><span class="tab-text">Settings</span>
+                <span class="tab-icon"><div class="icon icon-gear-duotone"></div></span><span class="tab-text">Settings</span>
             </a>
         </nav>
 
         <div id="pageItems" class="inventory-page active items-view-medium">
 
              <div class="items-toolbar search-toolbar" style="display: flex; gap: 8px; align-items: center; padding: 12px 15px; border-radius: 10px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 12px;">
-                <select id="searchTypeFilter" autocomplete="off" onchange="handleSearchFilterTypeChange()" style="width: auto; margin-bottom: 0; padding: 10px 14px; border-radius: 8px; font-weight: 600;">
-                    <option value="all" selected>🌐 Search All</option>
-                    <option value="name">📝 Items (By Name)</option>
-                    <option value="tag">🏷️ Tag</option>
-                    <option value="category">🗂️ Category</option>
-                    <option value="location">📦 Location</option>
-                    <option value="barcode">📷 Hardware ID</option>
-                </select>
+                <div class="custom-dropdown" id="searchDropdown">
+  <input type="hidden" id="searchTypeFilter" value="all">
+
+  <button type="button" class="dropdown-trigger" id="dropdownTrigger">
+    <div class="icon icon-globe-duotone" id="selectedIcon"></div>
+  </button>
+
+  <ul class="dropdown-menu" id="dropdownMenu">
+    <li class="dropdown-item selected" data-value="all" data-icon="icon-globe-duotone">
+      <div class="icon icon-globe-duotone"></div> Search All
+    </li>
+    <li class="dropdown-item" data-value="name" data-icon="icon-binoculars-duotone">
+      <div class="icon icon-binoculars-duotone"></div> Items (By Name)
+    </li>
+    <li class="dropdown-item" data-value="tag" data-icon="icon-tag-duotone">
+      <div class="icon icon-tag-duotone"></div> Tag
+    </li>
+    <li class="dropdown-item" data-value="category" data-icon="icon-tag-chevron-duotone">
+      <div class="icon icon-tag-chevron-duotone"></div> Category
+    </li>
+    <li class="dropdown-item" data-value="location" data-icon="icon-folder-open-duotone">
+      <div class="icon icon-folder-open-duotone"></div> Location
+    </li>
+    <li class="dropdown-item" data-value="barcode" data-icon="icon-scan-duotone">
+      <div class="icon icon-scan-duotone"></div> Hardware ID
+    </li>
+  </ul>
+</div>
 
                 <form onsubmit="document.getElementById('globalSearchInput').blur(); return false;" style="flex-grow: 1; display: flex; margin: 0; padding: 0;">
                     <div style="position: relative; flex-grow: 1; display: flex; align-items: center; margin-bottom: 0;">
@@ -169,7 +259,7 @@
                     </div>
                 </form>
 
-                <button class="btn-outline icon-btn smart-scan-icon-btn" onclick="openBarcodeScannerModal()" title="Smart Scan Search" style="height: 42px; width: 42px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center;"></button>
+                <button class="btn-outline icon-btn " onclick="openBarcodeScannerModal()" title="Smart Scan Search" style="height: 42px; width: 42px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center;"><div class="icon icon-scan-duotone"></div></button>
             </div>
 
             <div id="searchFilterPillsRow" style="display: none; max-height:150px; overflow-y: auto; flex-wrap: wrap; gap: 8px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px;"></div>
@@ -252,20 +342,20 @@
     </div>
 
     <div class="settings-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; overflow-x: auto; padding-bottom: 5px;">
-        <button class="s-tab active" onclick="showSettingsTab('settings-camera', this)">📷 Camera</button>
-        <button class="s-tab" onclick="showSettingsTab('settings-backups', this)">💾 Backups</button>
-        <button class="s-tab" onclick="showSettingsTab('settings-reports', this)">📊 Reports</button>
-        <button class="s-tab" onclick="showSettingsTab('settings-logs', this)">📜 Logs</button>
+        <button class="s-tab active" onclick="showSettingsTab('settings-camera', this)"><div class="icon icon-camera-duotone"></div> Camera</button>
+        <button class="s-tab" onclick="showSettingsTab('settings-backups', this)"><div class="icon icon-cloud-arrow-up-duotone"></div> Backups</button>
+        <button class="s-tab" onclick="showSettingsTab('settings-reports', this)"><div class="icon icon-chart-line-up-duotone"></div> Reports</button>
+        <button class="s-tab" onclick="showSettingsTab('settings-logs', this)"><div class="icon icon-notepad-duotone"></div> Logs</button>
     </div>
 
     <div id="settings-camera" class="settings-tab-content">
         <div class="item-card" style="text-align: left; padding: 25px; border: 1px solid #cbd5e1;">
-            <h3 style="margin-top: 0; color: #004a99; font-size: 20px;">🤳 Camera & Hardware Zoom Settings</h3>
+            <h3 style="margin-top: 0; color: #004a99; font-size: 20px;"><div class="icon icon-camera-duotone"></div>  Camera Zoom Settings</h3>
             <p style="font-size: 14px; color: #475569; margin-bottom: 20px;">Prioritise camera lenses and apply hardware macro zoom capabilities.</p>
             <div style="margin-bottom: 15px;">
                 <label style="display:block; font-size:12px; font-weight:bold; margin-bottom:5px; color:#475569;">Default System Camera Lens:</label>
                 <select id="settingsDefaultCamera" onchange="saveHardwarePreferences()" style="width:100%; height:40px; font-size:13px; margin-bottom:0;">
-                    <option value="AUTO_REAR">🎯 Auto-Select Main Rear Lens</option>
+                    <option value="AUTO_REAR">Auto-Select Main Rear Lens</option>
                 </select>
             </div>
             <div>
@@ -283,13 +373,13 @@
             </div>
             <div class="item-card" style="text-align: left; padding: 25px;">
                 <h3 style="margin-top: 0; color: #004a99; font-size: 20px;">📦 Full System Backup</h3>
-                <button class="btn-primary" onclick="exportFullBackup()" style="width: 100%;">⬇️ Download Full Database (.json)</button>
+                <button class="btn-primary" onclick="exportFullBackup()" style="width: 100%;"> Download Full Database (.json)</button>
             </div>
             <div class="item-card" style="text-align: left; padding: 25px; border: 2px solid #ef4444;">
     <h3 style="margin-top: 0; color: #ef4444; font-size: 20px;">⚠️ System Import</h3>
     <p style="font-size: 14px; color: #475569; margin-bottom: 25px;">Restore inventory data from a previously exported JSON file. <b>Warning: This is a destructive operation.</b></p>
     <input type="file" id="importJsonInput" accept=".json" style="display:none;" onchange="handleImportFile(this)">
-    <button class="btn-primary" onclick="document.getElementById('importJsonInput').click()" style="width: 100%; height: 46px; font-size: 15px; background: #ef4444; border-color: #ef4444;">📂 Import Database JSON</button>
+    <button class="btn-primary" onclick="document.getElementById('importJsonInput').click()" style="width: 100%; height: 46px; font-size: 15px; background: #ef4444; border-color: #ef4444;"><div class="icon icon-file-arrow-up-duotone"></div> Import Database JSON</button>
 </div>
         </div>
     </div>
@@ -334,7 +424,7 @@
 
     <div class="log-toolbar-row" style="margin-top: 10px;">
         <input type="text" id="logSearchInput" placeholder="Search logs..." oninput="filterAuditLogs()" style="flex:1;">
-        <button class="btn-outline" onclick="toggleColumnMenu(event, 'logColMenu')">⚙️</button>
+        <button class="btn-outline" onclick="toggleColumnMenu(event, 'logColMenu')"><div class="icon icon-gear-duotone"></div></button>
         <button class="btn-outline" onclick="loadAuditLogs()">🔄</button>
     </div>
 </div>
@@ -560,15 +650,15 @@
             </div>
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <input type="file" id="addLocationPhotoInput" accept="image/*" style="display: none;" onchange="previewLocationImage(this, 'addLocationPreview', 'add')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('addLocationPhotoInput').click()">📁 Upload</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('addLocationPhotoInput').click()"><div class="icon icon-file-arrow-up-duotone"></div> Upload</button>
                 <input type="file" id="addLocationCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewLocationImage(this, 'addLocationPreview', 'add')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('add-location')">📷 Camera</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('add-location')"><div class="icon icon-camera-duotone"></div> Camera</button>
             </div>
             <label>Location Name</label><input id="addLocationName" type="text">
             <label>Description</label><textarea id="addLocationDescription" rows="3"></textarea>
             <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
                 <div style="flex-grow: 1;"><label>Barcode ID</label><input id="addLocationBarcode" type="text" style="margin-bottom: 0;"></div>
-                <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openBarcodeScannerModal('addLocationBarcode')">📷 Scan</button>
+                <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openBarcodeScannerModal('addLocationBarcode')"><div class="icon icon-camera-duotone"></div> Scan</button>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
                 <div style="flex-grow: 1;"><label>NFC Identity Tag</label><input id="addLocationNFC" type="text" style="margin-bottom: 0;"></div>
@@ -597,7 +687,7 @@
             </div>
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <input type="file" id="addTempLocationPhotoInput" accept="image/*" style="display: none;" onchange="previewTempLocationImage(this, 'addTempLocationPreview', 'add')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('addTempLocationPhotoInput').click()">📁 Upload</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('addTempLocationPhotoInput').click()"><div class="icon icon-file-arrow-up-duotone"></div> Upload</button>
                 <input type="file" id="addTempLocationCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewTempLocationImage(this, 'addTempLocationPreview', 'add')">
                 <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('add-temp-location')">📷 Photo</button>
             </div>
@@ -913,12 +1003,11 @@
 
     <div id="quickMoveModal" class="modal" style="z-index: 3000;">
         <div class="modal-content" style="max-width: 500px; text-align: center; padding: 25px;">
-            <h2 id="qmTitle" style="color: #004a99; margin-bottom: 5px;">Quick Move</h2>
+            <h2 id="qmTitle" style="color: #004a99; margin-top:0; margin-bottom: 5px;">Quick Move</h2>
             <p id="qmInstruction" style="margin-bottom: 15px; color: #475569; font-size: 15px;">Scan Item Barcode or Tap NFC</p>
 
             <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 15px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
-                <button type="button" id="qmBatchToggle" onclick="toggleQmBatchMode(this.getAttribute('aria-pressed') !== 'true')" aria-pressed="false" style="width: 100%; border: 1px solid #cbd5e1; background: #f1f5f9; color: #334155; padding: 10px 12px; border-radius: 999px; font-weight: 700; cursor: pointer;">Scan Multiple Items</button>
-                <label for="qmBatchToggle" style="font-weight: 600; font-size: 14px; color: #334155; margin: 0; cursor: pointer; user-select: none;">📦 Scan Multiple Items (Batch)</label>
+              <div class="icon icon-copy-duotone"></div> Batch Mode  <button type="button" id="qmBatchToggle" onclick="toggleQmBatchMode(this.getAttribute('aria-pressed') !== 'true')" aria-pressed="false" style="width: 100%; border: 1px solid #cbd5e1; background: #f1f5f9; color: #334155; padding: 10px 12px; border-radius: 999px; font-weight: 700; cursor: pointer;">Toggle to activate</button>
             </div>
 
             <div id="qmMainContent" style="position: relative;">
@@ -1097,34 +1186,34 @@
         </footer>
     </div>
 
-    <div class="fab-container left-side" id="mobileFabContainer">
-        <div class="fab-half-screen-overlay" id="fabOverlay" onclick="closeFab()"></div>
+    <div class="fab-half-screen-overlay" id="fabOverlay" onclick="closeFab()"></div>
 
+    <div class="fab-container left-side" id="mobileFabContainer">
         <div style="position: relative; display: flex; flex-direction: column; align-items: flex-start;">
             <div id="quickActionsStack" class="fab-stack">
                 <div class="quick-action-wrapper">
-                    <button class="fab-btn fab-mini" onclick="openQuickMoveModal(); toggleFab()" title="Quick Move Items">📦🔄</button>
+                    <button class="fab-btn fab-mini" onclick="openQuickMoveModal(); toggleFab()" title="Quick Move Items"><div class="icon icon-sneaker-move-duotone"></div></button>
                     <span class="fab-label">Quick Move</span>
                 </div>
                 <div class="quick-action-wrapper">
-                    <button class="fab-btn fab-mini" onclick="openQuickAssignModal(); toggleFab()" title="Quick Assign Items">👤📱</button>
+                    <button class="fab-btn fab-mini" onclick="openQuickAssignModal(); toggleFab()" title="Quick Assign Items"><div class="icon icon-user-circle-check-duotone"></div></button>
                     <span class="fab-label">Quick Assign</span>
                 </div>
                 <div class="quick-action-wrapper">
-                    <button class="fab-btn fab-mini" onclick="openQuickReturnModal(); toggleFab()" title="Fast Return Items">📥🔄</button>
+                    <button class="fab-btn fab-mini" onclick="openQuickReturnModal(); toggleFab()" title="Fast Return Items"><div class="icon icon-arrow-u-up-left-duotone"></div></button>
                     <span class="fab-label">Quick Return</span>
                 </div>
                 <div class="quick-action-wrapper">
-                    <button class="fab-btn fab-mini" onclick="openQuantityAdjusterModal(); toggleFab()" title="Fast Adjust Quantity">🔢</button>
+                    <button class="fab-btn fab-mini" onclick="openQuantityAdjusterModal(); toggleFab()" title="Fast Adjust Quantity"><div class="icon icon-list-numbers-duotone"></div></button>
                     <span class="fab-label">Quick Adjust</span>
                 </div>
             </div>
-            <button class="fab-btn fab-quick" id="fabQuickBtn" onclick="toggleFab()">⚡</button>
+            <button class="fab-btn fab-quick" id="fabQuickBtn" onclick="toggleFab()"><div class="icon icon-lightning-a-duotone"></div></button>
         </div>
 
-        <button class="fab-btn fab-location" id="fabLocationBtn" onclick="openAddLocationModal()">📦<span style="position:absolute; top:4px; right:6px; font-size:16px; font-weight:bold;">+</span></button>
-        <button class="fab-btn fab-item" id="fabItemBtn" onclick="openAddItemModal();">+</button>
-        <button class="fab-btn fab-item" id="fabFilterBtn" onclick="toggleFilterToolbar();">🏞️</button>
+        <button class="fab-btn fab-location" id="fabLocationBtn" onclick="openAddLocationModal()"><div class="icon icon-folder-plus-duotone"></div><span style="position:absolute; top:4px; right:6px; font-size:16px; font-weight:bold;">+</span></button>
+        <button class="fab-btn fab-item" id="fabItemBtn" onclick="openAddItemModal();"><div class="icon icon-file-plus-duotone"></div></button>
+        <button class="fab-btn fab-item" id="fabFilterBtn" onclick="toggleFilterToolbar();"><div class="icon icon-tree-view-duotone"></div></button>
     </div>
 
    <div id="importWarningModal" class="modal" style="z-index: 99999; background: rgba(153, 27, 27, 0.95);">
@@ -1177,6 +1266,30 @@
             handleGlobalSearch('');
         }
 
+        function isAnyModalOpen() {
+            return Array.from(document.querySelectorAll('.modal')).some(modal => {
+                const display = modal.style.display || window.getComputedStyle(modal).display;
+                return display === 'flex' || display === 'block' || modal.classList.contains('open');
+            });
+        }
+
+        function syncFabModalState() {
+            const fabContainer = document.getElementById("mobileFabContainer");
+            if (!fabContainer) return;
+            const modalOpen = isAnyModalOpen();
+            document.body.classList.toggle("modal-active", modalOpen);
+            fabContainer.classList.toggle("fab-modal-hidden", modalOpen);
+            fabContainer.classList.toggle("fab-modal-visible", !modalOpen);
+            if (modalOpen) window.closeFab?.();
+        }
+
+        function watchModalFabState() {
+            const modals = document.querySelectorAll('.modal');
+            const observer = new MutationObserver(syncFabModalState);
+            modals.forEach(modal => observer.observe(modal, { attributes: true, attributeFilter: ['style', 'class'] }));
+            syncFabModalState();
+        }
+
         let lastActivePageId = null;
 
         function updateMobileFabs() {
@@ -1222,8 +1335,10 @@
                 fabContainer.style.display = "none";
                 if (quickStack) quickStack.classList.remove('open');
             }
+            syncFabModalState();
         }
         updateMobileFabs();
+        watchModalFabState();
         window.addEventListener('resize', updateMobileFabs);
         window.addEventListener('orientationchange', updateMobileFabs);
 

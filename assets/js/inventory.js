@@ -2474,19 +2474,16 @@ async function addItem(addAnother = false) {
                 if (window.isAppOnline) {
                     const remotePayload = { ...payload, id: newItemId };
                     await window.db.from("items").upsert([remotePayload]);
-                    uploadedPhotoRows = await uploadItemPhotoFiles(newItemId, currentAddItemFiles, primaryPhotoIdentifier, 0);
-                    await localDB.items.update(newItemId, { photos: uploadedPhotoRows });
-                } else {
-                    for (let i = 0; i < currentAddItemFiles.length; i++) {
-                        const file = currentAddItemFiles[i];
-                        const fileName = `item-${newItemId}-${Date.now()}-${i}`;
-                        const isPrimary = file.name === primaryPhotoIdentifier;
-                        const base64Data = await window.fileToBase64(file);
-                        await localDB.sync_photos_queue.add({
-                            record_id: newItemId, record_type: 'item', bucket: 'item-photos',
-                            file_name: fileName, base64_data: base64Data, is_primary: isPrimary, status: 'pending'
-                        });
+                    try {
+                        uploadedPhotoRows = await uploadItemPhotoFiles(newItemId, currentAddItemFiles, primaryPhotoIdentifier, 0);
+                        await localDB.items.update(newItemId, { photos: uploadedPhotoRows });
+                    } catch (photoError) {
+                        console.error("Item photo upload failed:", photoError);
+                        await queueItemPhotoFiles(newItemId, currentAddItemFiles, primaryPhotoIdentifier);
+                        await customAlert("Item saved, but photo upload failed. The photos have been queued and will retry after the storage bucket policy is fixed.", "Photo Upload Failed");
                     }
+                } else {
+                    await queueItemPhotoFiles(newItemId, currentAddItemFiles, primaryPhotoIdentifier);
                 }
             }
             
@@ -4373,7 +4370,7 @@ function updateQuickBatchButton(prefix, active) {
     const btn = document.getElementById(`${prefix}BatchToggle`);
     if (!btn) return;
     btn.setAttribute("aria-pressed", active ? "true" : "false");
-    btn.textContent = active ? "Scanning Multiple Items" : "Scan Multiple Items";
+    btn.textContent = active ? "Scanning Multiple Items" : "Toggle to activate";
     btn.style.background = active ? "#004a99" : "#f1f5f9";
     btn.style.color = active ? "#ffffff" : "#334155";
     btn.style.borderColor = active ? "#004a99" : "#cbd5e1";
@@ -4517,6 +4514,25 @@ async function uploadItemPhotoFiles(itemId, filesArray, primaryIdentifier, exist
     }
 
     return insertedPhotos;
+}
+
+async function queueItemPhotoFiles(itemId, filesArray, primaryIdentifier) {
+    if (!itemId || !filesArray || filesArray.length === 0) return;
+    for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i];
+        const fileName = `item-${itemId}-${Date.now()}-${i}`;
+        const isPrimary = file.name === primaryIdentifier || (!primaryIdentifier && i === 0);
+        const base64Data = await window.fileToBase64(file);
+        await localDB.sync_photos_queue.add({
+            record_id: itemId,
+            record_type: "item",
+            bucket: "item-photos",
+            file_name: fileName,
+            base64_data: base64Data,
+            is_primary: isPrimary,
+            status: "pending"
+        });
+    }
 }
 
 async function createClonedItemRow(sourceItem, overrides) {
@@ -5573,3 +5589,51 @@ function setImportMode(mode, element) {
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+  const dropdown = document.getElementById('searchDropdown');
+  const trigger = document.getElementById('dropdownTrigger');
+  const menu = document.getElementById('dropdownMenu');
+  const items = menu.querySelectorAll('.dropdown-item');
+  const selectedIconContainer = document.getElementById('selectedIcon');
+  const hiddenInput = document.getElementById('searchTypeFilter');
+
+  // Toggle menu when clicking the button
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevents the window click listener from immediately closing it
+    dropdown.classList.toggle('open');
+  });
+
+  // Handle selecting an item
+  items.forEach(item => {
+    item.addEventListener('click', () => {
+      // 1. Get the new value and icon class
+      const newValue = item.getAttribute('data-value');
+      const newIconClass = item.getAttribute('data-icon');
+
+      // 2. Update the trigger button to show ONLY the new icon
+      selectedIconContainer.className = `icon ${newIconClass}`;
+
+      // 3. Update the hidden input value
+      hiddenInput.value = newValue;
+
+      // 4. Update selected styling in the list
+      items.forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+
+      // 5. Close the dropdown
+      dropdown.classList.remove('open');
+
+      // 6. Trigger your custom function if it exists!
+      if (typeof handleSearchFilterTypeChange === 'function') {
+        handleSearchFilterTypeChange();
+      }
+    });
+  });
+
+  // Close the dropdown if the user clicks anywhere else on the page
+  window.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+});
