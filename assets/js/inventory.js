@@ -2330,7 +2330,7 @@ function ensureEditItemLayout() {
         { button: deleteBtn, label: "Delete", title: "Delete" },
         { button: cancelBtn, label: "Cancel", title: "Cancel" },
         { button: saveBtn, label: "Save", title: "Save" }
-
+        
     ]);
 
     content.innerHTML = "";
@@ -2732,7 +2732,7 @@ function ensureEditLocationLayout() {
 
 function ensureAddTempLocationLayout() {
     const content = document.querySelector("#addTempLocationModal .modal-content");
-    const nfcInput = ensureInput("addTempLocationNFC", content);
+       const nfcInput = ensureInput("addTempLocationNFC", content);
     const buttonRow = content?.querySelector(".modal-buttons");
     let saveAnotherButton = content?.querySelector("button[onclick='addTempLocation(true)']");
     if (!saveAnotherButton && buttonRow) {
@@ -3030,7 +3030,7 @@ function updateEditModalHardwareButtonsUI() {
             barBtn.style.borderColor = "#cbd5e1";
         }
     }
-
+    
     if (nfcBtn) {
         if (editModalActiveNfcTagString.trim() !== "") {
             nfcBtn.textContent = "NFC Tag Assigned";
@@ -3367,13 +3367,13 @@ async function addTempLocation(addAnother = false) {
         const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, file);
         if (!uploadError) uploadedPhotoPath = fileName;
     }
-
+     
     const { error } = await withStatus(() => window.db.from("temp_locations").insert([{ name, description: desc, barcode, nfc_tag, photo_path: uploadedPhotoPath }]), "Creating...");
     if (!error) {
         logAction("CREATE", "Temp Location", name, "Created new assignee profile");
         await syncAfterWrite();
         loadTempLocationsAdmin();
-        if (addAnother) openAddTempLocationModal();
+    if (addAnother) openAddTempLocationModal();
         else closeModalClean('addTempLocationModal');
     }
 }
