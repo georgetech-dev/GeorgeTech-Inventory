@@ -47,8 +47,8 @@ body {
 }
 
 .inventory-footer-brand img {
-    width: 220px;
-    height: 220px;
+    width: 150px;
+    height: 150px;
     object-fit: contain;
 }
 
@@ -95,7 +95,7 @@ body:has(.modal[style*="display:block"]) .fab-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #3d8142fa, #3c6b9e);
+    background: linear-gradient(135deg, #3c6b9e  , #3d8142fa);
     color: white;
     padding: 10px 20px !important;
     border-radius: 12px 12px 0 0;
