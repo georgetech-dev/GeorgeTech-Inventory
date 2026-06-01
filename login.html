@@ -6,87 +6,232 @@
     <title>FieldHub Inventory - Login</title>
     
     <link rel="stylesheet" href="assets/css/variables.css">
-    <link rel="stylesheet" href="assets/css/admin.css">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* Standalone styles to center the login box nicely on the screen */
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: var(--bg-color, #f4f7f6); /* Fallback if variable is missing */
-            font-family: Arial, sans-serif;
-        }
+    /* Global Variables for strict brand consistency */
+    :root {
+        --bg-color: #f8fafc;         /* Modern cool-grey canvas background */
+        --primary-color: #0f172a;    /* High-contrast slate-900 corporate primary */
+        --primary-hover: #1e293b;    /* Smooth hover state scaling */
+        --text-main: #334155;        /* Soft body text (slate-700) reduces eye strain */
+        --text-muted: #64748b;       /* Secondary details/links (slate-500) */
+        --border-color: #cbd5e1;     /* Crisp input borders (slate-300) */
+        --border-focus: #3b82f6;     /* Accessible active blue indicator */
+    }
 
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
+    body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        background-color: var(--bg-color);
+        /* Replaced Arial with a modern corporate sans-serif system stack */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text-main);
+        -webkit-font-smoothing: antialiased;
+    }
 
-        .login-container h1 {
-            margin-top: 0;
-            color: var(--primary-color, #2c3e50);
-            margin-bottom: 24px;
-        }
+    .login-container-header {
+        background: #ffffff;
+        padding: 48px 40px; /* Enhanced vertical breathing room */
+        border-radius: 12px; /* Smooth modern curvature */
+        /* Modern multi-layered soft ambient drop shadow */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05), 
+                    0 10px 15px -3px rgba(0,0,0,0.05), 
+                    0 4px 6px -4px rgba(0,0,0,0.05);
+        border: 1px solid #f1f5f9;
+        width: 100%;
+        max-width: 420px;
+        box-sizing: border-box;
+    }
 
-        .form-group {
-            margin-bottom: 16px;
-            text-align: left;
-        }
+    .login-container-header h2 {
+        margin-top: 0;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.02em; /* Tight letter spacing for clean headlines */
+        color: var(--primary-color);
+        margin-bottom: 28px;
+    }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
-            color: #333;
-        }
+    .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
 
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px; /* Slightly smaller for cleaner structural form balance */
+        font-weight: 600;
+        color: var(--primary-color);
+    }
 
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary-color, #007bff);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background-color 0.2s;
-        }
+    .password-wrapper {
+        position: relative;
+        width: 100%;
+    }
 
-        .login-btn:hover {
-            background-color: var(--secondary-color, #0056b3);
-        }
+    .form-group input {
+        width: 100%;
+        height: 44px; /* Explicit height for rigorous structure alignment */
+        padding: 0 40px 0 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: #ffffff;
+        font-size: 15px;
+        color: var(--primary-color);
+        box-sizing: border-box;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
 
-        #error-message {
-            color: #dc3545;
-            margin-top: 15px;
-            font-size: 14px;
-            display: none;
-        }
-    </style>
+    /* Important for professional interactive feedback loops */
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--border-focus);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12); /* Modern focus rings */
+    }
+
+    /* Better placeholder visibility styling */
+    .form-group input::placeholder {
+        color: #94a3b8;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 4px;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        transition: color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .toggle-password:focus {
+        outline: none;
+        background-color: #f1f5f9;
+    }
+
+    .toggle-password:hover {
+        color: var(--primary-color);
+    }
+
+    .toggle-password svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .login-btn {
+        width: 100%;
+        height: 44px;
+        background-color: var(--primary-color);
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+        transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .login-btn:hover {
+        background-color: var(--primary-hover);
+    }
+
+    /* Subtle press feedback when clicked */
+    .login-btn:active {
+        transform: scale(0.99);
+    }
+
+    /* Microcopy links and register suggestions at the base */
+    .login-container p {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-top: 24px;
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    .login-container p a {
+        color: var(--text-muted);
+        font-weight: 500;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        transition: color 0.15s ease;
+    }
+
+    .login-container p a:hover {
+        color: var(--border-focus);
+    }
+
+    #error-message {
+        color: #ef4444; /* Clean flat design error red */
+        background-color: #fef2f2;
+        border: 1px solid #fee2e2;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-top: 16px;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: left;
+        display: none;
+    }
+        /* Centers the logo and title together layout-wise */
+    .login-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 28px;
+    }
+
+    /* Sets specific rules for your logo asset sizing */
+    .login-header img {
+        width: 80px;
+        height: auto;
+        margin-bottom: 16px;
+    }
+
+    /* Cleaned up margin rules since parent handles the layout spacing */
+    .login-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--primary-color);
+    }
+        /* Microcopy links and register suggestions at the base */
+    .login-container p {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-top: 24px;
+        margin-bottom: 0;
+        line-height: 1.5;
+        text-align: center; /* Centers the links perfectly */
+    }
+
+</style>
 </head>
 <body>
 
     <div class="login-container">
-        <h1>FieldHub Inventory</h1>
+        <div class="login-container-header">
+        <!-- Wrap these two items in this header div -->
+        <div class="login-header">
+            <img src="assets/images/logo.png" alt="FieldHub Logo">
+            <h2>Sign In</h2>
+        </div>
         <form id="login-form">
             <div class="form-group">
                 <label for="email">Email</label>
@@ -94,11 +239,22 @@
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" required placeholder="••••••••">
+                <div class="password-wrapper">
+                    <input type="password" id="password" required placeholder="••••••••">
+                    <button type="button" class="toggle-password" id="toggle-password-btn" aria-label="Toggle password visibility">
+                        <!-- Default Hidden (Eye icon) -->
+                        <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="eye-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="login-btn" id="submit-btn">Sign In</button>
             <div id="error-message"></div>
         </form>
+        <p><a href="fieldhub.uk/forgot-password">Forgot your password?</a></p>
+        <p>Don't have an account? <br><a href="fieldhub.uk/register">Register a request here</a></p>
     </div>
 
     <script>
@@ -120,7 +276,7 @@
             const { data: { session } } = await db.auth.getSession();
             if (session) {
                 // If they are already logged in, send them straight to the inventory
-                window.location.href = 'inventory.html';
+                window.location.href = 'index.html';
             }
         }
         checkSession();
@@ -157,8 +313,29 @@
                 submitBtn.disabled = false;
             } else {
                 // Success! Redirect to the main app
-                window.location.href = 'inventory.html';
+                window.location.href = 'index.html';
             }
+        });
+        // ==========================================
+        // 4. TOGGLE PASSWORD VISIBILITY
+        // ==========================================
+         const passwordInput = document.getElementById('password');
+        const togglePasswordBtn = document.getElementById('toggle-password-btn');
+        const eyeIcon = document.getElementById('eye-icon');
+
+        // Path coordinates for "Show" and "Hide" eye states
+        const eyeOpenPath = `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />`;
+        const eyeClosedPath = `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.815 7.815 3 3m-3-3-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />`;
+
+        togglePasswordBtn.addEventListener('click', () => {
+            // Check the active state type attribute
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            
+            // Toggle types between text and hidden password asterisks
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            
+            // Swap out the visible inner SVG lines
+            eyeIcon.innerHTML = isPassword ? eyeClosedPath : eyeOpenPath;
         });
     </script>
 </body>
