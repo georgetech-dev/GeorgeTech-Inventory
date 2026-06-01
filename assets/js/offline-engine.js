@@ -28,7 +28,7 @@ function initOfflineEngine() {
     
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('../sw.js').then(registration => {
+            navigator.serviceWorker.register('./sw.js').then(registration => {
                 console.log('🛠️ ServiceWorker registration successful with scope: ', registration.scope);
             }).catch(err => {
                 console.log('⚠️ ServiceWorker registration failed: ', err);
@@ -257,12 +257,13 @@ window.processSyncQueue = async function() {
                     const file = new File([blob], photo.file_name, { type: blob.type });
 
                     // Upload to Supabase Storage
-                    const { error: uploadErr } = await window.db.storage.from(photo.bucket).upload(photo.file_name, file);
+                    const { error: uploadErr } = await window.db.storage.from(photo.bucket).upload(photo.file_name, file, { upsert: true, contentType: file.type || "image/jpeg" });
                     
                     if (!uploadErr) {
                         // Link the uploaded photo to the database record
                         if (photo.record_type === 'item') {
-                            await window.db.from('photos').insert([{ item_id: photo.record_id, file_path: photo.file_name, is_primary: photo.is_primary }]);
+                            const { error: linkErr } = await window.db.from('photos').insert([{ item_id: photo.record_id, file_path: photo.file_name, is_primary: photo.is_primary }]);
+                            if (linkErr) throw linkErr;
                         } else if (photo.record_type === 'location') {
                             await window.db.from('locations').update({ photo_path: photo.file_name }).eq('id', photo.record_id);
                         } else if (photo.record_type === 'temp_location') {

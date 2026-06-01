@@ -285,6 +285,157 @@ function stackItemFormActions(actionStack, orderedButtons) {
     });
 }
 
+function makeInventoryFormRow(labelText, control, extraClass = "") {
+    const row = document.createElement("div");
+    row.className = `inventory-form-row ${extraClass}`.trim();
+    const label = document.createElement("div");
+    label.className = "inventory-form-row-label";
+    label.textContent = labelText;
+    const field = document.createElement("div");
+    field.className = "inventory-form-row-control";
+    if (control) field.append(control);
+    row.append(label, field);
+    return row;
+}
+
+function makeInventoryFormActions(buttons) {
+    const actions = document.createElement("div");
+    actions.className = "inventory-form-icon-actions";
+    buttons.filter(Boolean).forEach(({ button, label, title }) => {
+        button.textContent = label;
+        button.title = title || "";
+        button.setAttribute("aria-label", title || label);
+        button.classList.add("inventory-form-icon-action");
+        actions.appendChild(button);
+    });
+    return actions;
+}
+
+function makeScanPair(barcodeTarget, nfcTarget) {
+    const wrap = document.createElement("div");
+    wrap.className = "inventory-scan-pair";
+    const barcodeBtn = document.createElement("button");
+    barcodeBtn.type = "button";
+    barcodeBtn.className = "btn-outline item-form-hardware-action w-100";
+    barcodeBtn.textContent = "No Barcode";
+    barcodeBtn.onclick = () => openBarcodeScannerModal(barcodeTarget);
+    const nfcBtn = document.createElement("button");
+    nfcBtn.type = "button";
+    nfcBtn.className = "btn-outline item-form-hardware-action w-100";
+    nfcBtn.textContent = "NFC Ready (Tap)";
+    nfcBtn.onclick = () => openNfcScannerModal(nfcTarget);
+    wrap.append(barcodeBtn, nfcBtn);
+    return { wrap, barcodeBtn, nfcBtn };
+}
+
+function syncScanPairButtons(barcodeInput, nfcInput, barcodeBtn, nfcBtn) {
+    if (barcodeBtn) {
+        const value = barcodeInput?.value?.trim() || "";
+        barcodeBtn.textContent = value ? `Barcode: ${value}` : "No Barcode";
+        barcodeBtn.classList.toggle("has-value", !!value);
+    }
+    if (nfcBtn) {
+        const value = nfcInput?.value?.trim() || "";
+        nfcBtn.textContent = value ? "NFC Tag Assigned" : "NFC Ready (Tap)";
+        nfcBtn.classList.toggle("has-value", !!value);
+    }
+}
+
+function makeYesNoToggle(id, isActive, onClick) {
+    const button = createToolToggleButton(id, isActive, onClick);
+    button.classList.add("yes-no-toggle");
+    setYesNoToggleLabels(button);
+    return button;
+}
+
+function setYesNoToggleLabels(button) {
+    if (!button) return;
+    if (button.querySelectorAll(".item-form-tool-toggle-option").length < 2) initialiseToolToggle(button);
+    const options = button.querySelectorAll(".item-form-tool-toggle-option");
+    if (options[0]) options[0].textContent = "No";
+    if (options[1]) options[1].textContent = "Yes";
+}
+
+function setRowHiddenByControl(control, hidden) {
+    const row = control?.closest(".inventory-form-row");
+    if (row) row.style.display = hidden ? "none" : "";
+}
+
+function ensureInput(id, parent) {
+    let input = document.getElementById(id);
+    if (!input) {
+        input = document.createElement("input");
+        input.id = id;
+        input.type = "hidden";
+        parent?.appendChild(input);
+    }
+    return input;
+}
+
+function setElementValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.value = value;
+    return element;
+}
+
+function setElementText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+    return element;
+}
+
+function setElementSrc(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.src = value;
+    return element;
+}
+
+function ensureSimpleModalLayout(config) {
+    const content = document.querySelector(`#${config.modalId} .modal-content`);
+    if (!content || content.dataset.listLayoutReady === "true") return;
+
+    const titleNodes = config.titleIds
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+    const title = content.querySelector("h3");
+    const photoLabel = config.photoPreview?.previousElementSibling;
+    const photoButtons = config.photoPreview?.nextElementSibling;
+
+    const scan = makeScanPair(config.barcodeId, config.nfcId);
+    const barcodeInput = ensureInput(config.barcodeId, scan.wrap);
+    const nfcInput = ensureInput(config.nfcId, scan.wrap);
+    barcodeInput.type = "hidden";
+    nfcInput.type = "hidden";
+    scan.wrap.append(barcodeInput, nfcInput);
+    syncScanPairButtons(barcodeInput, nfcInput, scan.barcodeBtn, scan.nfcBtn);
+
+    const actions = makeInventoryFormActions(config.actions);
+    const hiddenScanInputs = document.createElement("div");
+    hiddenScanInputs.style.display = "none";
+    hiddenScanInputs.append(barcodeInput, nfcInput);
+
+    content.innerHTML = "";
+    if (title) content.append(title);
+    titleNodes.forEach(node => content.append(node));
+    if (photoLabel) content.append(photoLabel);
+    if (config.photoPreview) content.append(config.photoPreview);
+    if (photoButtons) content.append(photoButtons);
+    content.append(hiddenScanInputs);
+
+    config.rows.forEach(row => {
+        if (row.control) content.append(makeInventoryFormRow(row.label, row.control));
+    });
+    content.append(makeInventoryFormRow("Barcode", scan.barcodeBtn));
+    content.append(makeInventoryFormRow("NFC", scan.nfcBtn));
+    config.afterScanRows?.forEach(row => {
+        if (row.control) content.append(makeInventoryFormRow(row.label, row.control));
+    });
+    content.append(actions);
+
+    content.dataset.listLayoutReady = "true";
+    content._syncScanPair = () => syncScanPairButtons(barcodeInput, nfcInput, scan.barcodeBtn, scan.nfcBtn);
+}
+
 function createToolToggleButton(id, isActive, onClick) {
     const button = document.createElement("button");
     button.type = "button";
@@ -434,6 +585,7 @@ function customConfirm(message, title = "Confirm Action", isDanger = false) {
 
 function closeModal(id) {
     document.getElementById(id).style.display = "none";
+    document.body.classList.toggle("modal-active", !!document.querySelector('.modal[style*="display: flex"], .modal[style*="display:flex"], .modal[style*="display: block"], .modal[style*="display:block"]'));
     delete modalDirtySnapshots[id];
     if (id === "addLocationModal") {
         pendingLocationPickerAfterCreate = null;
@@ -2008,7 +2160,6 @@ function ensureAddItemLayout() {
     const tagRow = tagSelect.parentElement;
     const tagLabel = tagRow?.previousElementSibling;
     const locationBarcodeBtn = document.querySelector("button[onclick=\"openBarcodeScannerModal('itemLocationTunnel')\"]");
-    const locationNfcBtn = document.querySelector("button[onclick=\"openNfcScannerModal('itemLocationTunnel')\"]");
     const addBarcodeInput = document.getElementById("addItemBarcode");
     const addNfcInput = document.getElementById("addItemNFC");
 
@@ -2016,9 +2167,10 @@ function ensureAddItemLayout() {
     media.className = "item-form-media";
     media.append(photoLabel, preview, photoButtons);
 
-    const addToolToggle = document.getElementById("addItemEquipmentToggle") || createToolToggleButton("addItemEquipmentToggle", false, toggleAddItemEquipment);
+    const addToolToggle = document.getElementById("addItemEquipmentToggle") || makeYesNoToggle("addItemEquipmentToggle", false, toggleAddItemEquipment);
     addToolToggle.className = "item-form-tool-toggle";
-    initialiseToolToggle(addToolToggle);
+    addToolToggle.classList.add("yes-no-toggle");
+    setYesNoToggleLabels(addToolToggle);
     addToolToggle.onclick = toggleAddItemEquipment;
     addToolToggle.setAttribute("aria-label", "Toggle item tool mode");
     normaliseQuantityWrapper(qtyWrapper);
@@ -2035,27 +2187,24 @@ function ensureAddItemLayout() {
     addNfcButton.id = "btnAddItemNfcAction";
     addNfcButton.className = "btn-outline item-form-hardware-action";
     addNfcButton.onclick = triggerAddItemNfcScan;
-    addHardwareColumn.append(
-        wrapItemFormField(makeItemFormLabel("Barcode"), addBarcodeButton),
-        wrapItemFormField(makeItemFormLabel("NFC"), addNfcButton)
-    );
-    if (addBarcodeInput) { addBarcodeInput.type = "hidden"; addHardwareColumn.append(addBarcodeInput); }
-    if (addNfcInput) { addNfcInput.type = "hidden"; addHardwareColumn.append(addNfcInput); }
+    const addBarcodeField = wrapItemFormField(makeItemFormLabel("Barcode"), addBarcodeButton);
+    const addNfcField = wrapItemFormField(makeItemFormLabel("NFC"), addNfcButton);
+    addHardwareColumn.append(addBarcodeField, addNfcField);
+    if (addBarcodeInput) { addBarcodeInput.type = "hidden"; addBarcodeField.append(addBarcodeInput); }
+    if (addNfcInput) { addNfcInput.type = "hidden"; addNfcField.append(addNfcInput); }
 
-    const quantityToolRow = document.createElement("div");
-    quantityToolRow.className = "item-form-quantity-tool-row";
-    const addNumberColumn = document.createElement("div");
-    addNumberColumn.className = "item-form-number-column";
-    addNumberColumn.append(qtyWrapper, ensureMinimumOrderControl("add"), addToolToggle);
-    quantityToolRow.append(addNumberColumn, addHardwareColumn);
+    const minimumControl = ensureMinimumOrderControl("add");
 
     const locationRow = document.createElement("div");
     locationRow.className = "item-form-location-row";
     locationRow.append(location);
     const addLocationBtn = document.querySelector("button[onclick=\"openAddLocationFromItemModal('itemLocationSelect')\"]");
     if (addLocationBtn) locationRow.append(addLocationBtn);
-    if (locationBarcodeBtn) locationRow.append(locationBarcodeBtn);
-    if (locationNfcBtn) locationRow.append(locationNfcBtn);
+    if (locationBarcodeBtn) {
+        locationBarcodeBtn.classList.add("smart-scan-icon-btn");
+        locationBarcodeBtn.title = "Smart scan location barcode or NFC";
+        locationRow.append(locationBarcodeBtn);
+    }
 
     const identityRow = document.createElement("div");
     identityRow.className = "item-form-identity-row";
@@ -2066,28 +2215,35 @@ function ensureAddItemLayout() {
     tagsBlock.className = "item-form-tags-block";
     tagsBlock.append(tagLabel, tagRow, tagPills);
 
-    const actionStack = document.createElement("div");
     const cancelBtn = Array.from(buttons.children).find(btn => btn.textContent.trim().toLowerCase() === "cancel");
     const saveAnotherBtn = Array.from(buttons.children).find(btn => btn.textContent.trim().toLowerCase().includes("another"));
     const saveBtn = Array.from(buttons.children).find(btn => btn.getAttribute("onclick") === "addItem()");
-    if (saveBtn) saveBtn.textContent = "Save";
-    stackItemFormActions(actionStack, [saveBtn, saveAnotherBtn, cancelBtn]);
+    const actionStack = makeInventoryFormActions([
+        { button: cancelBtn, label: "Close", title: "Cancel" },
+        { button: saveAnotherBtn, label: "Save, add another", title: "Save and add another" },
+        { button: saveBtn, label: "Save", title: "Save" }
+    ]);
 
     content.innerHTML = "";
     content.append(
         title,
         media,
-        wrapItemFormField(nameLabel, name),
-        wrapItemFormField(descriptionLabel, description),
-        wrapItemFormField(qtyLabel, quantityToolRow),
-        wrapItemFormField(locationLabel, locationRow),
-        wrapItemFormField(categoryLabel, categoryRow),
-        tagsBlock,
+        makeInventoryFormRow("Name", name),
+        makeInventoryFormRow("Description", description),
+        makeInventoryFormRow("Tool?", addToolToggle),
+        makeInventoryFormRow("Quantity", qtyWrapper, "quantity-row"),
+        makeInventoryFormRow("Minimum stock", minimumControl, "minimum-stock-row"),
+        makeInventoryFormRow("Barcode", addBarcodeField),
+        makeInventoryFormRow("NFC", addNfcField),
+        makeInventoryFormRow("Location", locationRow),
+        makeInventoryFormRow("Category", categoryRow),
+        makeInventoryFormRow("Tags", tagsBlock),
         actionStack
     );
     renderLocationTreeSelect(location);
     content.dataset.layoutReady = "true";
     updateAddItemHardwareButtonsUI();
+    setupTagSearchInput("add");
 }
 
 function ensureEditItemLayout() {
@@ -2131,7 +2287,7 @@ function ensureEditItemLayout() {
     media.className = "item-form-media";
     media.append(preview, photoButtons);
 
-    const editToolToggle = createToolToggleButton("editItemEquipmentToggle", !!equipmentCheckbox?.checked, () => {
+    const editToolToggle = makeYesNoToggle("editItemEquipmentToggle", !!equipmentCheckbox?.checked, () => {
         if (!equipmentCheckbox) return;
         equipmentCheckbox.checked = !equipmentCheckbox.checked;
         handleEquipmentCheckboxToggle(equipmentCheckbox.checked);
@@ -2143,17 +2299,13 @@ function ensureEditItemLayout() {
     identityRow.className = "item-form-hardware-column";
     barcodeBtn.classList.add("item-form-hardware-action");
     nfcBtn.classList.add("item-form-hardware-action");
+    nfcBtn.style.display = "";
     const barcodeField = wrapItemFormField(makeItemFormLabel("Barcode"), barcodeBtn);
     const nfcField = wrapItemFormField(makeItemFormLabel("NFC"), nfcBtn);
     identityRow.append(barcodeField, nfcField);
 
-    const quantityToolRow = document.createElement("div");
-    quantityToolRow.className = "item-form-quantity-tool-row";
-    const editNumberColumn = document.createElement("div");
-    editNumberColumn.className = "item-form-number-column";
-    editNumberColumn.append(qtyWrapper, ensureMinimumOrderControl("edit"), editToolToggle);
-    quantityToolRow.append(editNumberColumn, identityRow);
-    if (equipmentCheckbox) quantityToolRow.append(equipmentCheckbox);
+    const minimumControl = ensureMinimumOrderControl("edit");
+    if (equipmentCheckbox) editToolToggle.append(equipmentCheckbox);
 
     const locationRow = document.createElement("div");
     locationRow.className = "item-form-location-row";
@@ -2174,29 +2326,44 @@ function ensureEditItemLayout() {
     tagsBlock.className = "item-form-tags-block";
     tagsBlock.append(tagsLabel, tagRow, tagPills);
 
-    const actionStack = document.createElement("div");
-    stackItemFormActions(actionStack, [saveBtn, deleteBtn, cancelBtn]);
+    const actionStack = makeInventoryFormActions([
+        { button: deleteBtn, label: "Delete", title: "Delete" },
+        { button: cancelBtn, label: "Cancel", title: "Cancel" },
+        { button: saveBtn, label: "Save", title: "Save" }
+
+    ]);
 
     content.innerHTML = "";
     content.append(
         title,
         media,
-        wrapItemFormField(nameLabel, name),
-        wrapItemFormField(descriptionLabel, description),
-        wrapItemFormField(qtyLabel, quantityToolRow),
-        wrapItemFormField(locationLabel, locationRow),
-        wrapItemFormField(categoryLabel, categoryRow),
-        tagsBlock,
+        makeInventoryFormRow("Name", name),
+        makeInventoryFormRow("Description", description),
+        makeInventoryFormRow("Tool?", editToolToggle),
+        makeInventoryFormRow("Quantity", qtyWrapper, "quantity-row"),
+        makeInventoryFormRow("Minimum stock", minimumControl, "minimum-stock-row"),
+        makeInventoryFormRow("Barcode", barcodeField),
+        makeInventoryFormRow("NFC", nfcField),
+        makeInventoryFormRow("Location", locationRow),
+        makeInventoryFormRow("Category", categoryRow),
+        makeInventoryFormRow("Tags", tagsBlock),
         actionStack
     );
     renderLocationTreeSelect(location);
     content.dataset.layoutReady = "true";
     handleEquipmentCheckboxToggle(!!equipmentCheckbox?.checked);
+    setupTagSearchInput("edit");
 }
 
 function openAddItemModal() { 
     ensureAddItemLayout();
-    document.getElementById("itemName").value = ""; document.getElementById("itemQuantity").value = "1"; document.getElementById("itemDescription").value = ""; document.getElementById("addItemBarcode").value = ""; document.getElementById("addItemNFC").value = ""; document.getElementById("addItemPhotoInput").value = ""; document.getElementById("addItemCameraInput").value = "";
+    setElementValue("itemName", "");
+    setElementValue("itemQuantity", "1");
+    setElementValue("itemDescription", "");
+    setElementValue("addItemBarcode", "");
+    setElementValue("addItemNFC", "");
+    setElementValue("addItemPhotoInput", "");
+    setElementValue("addItemCameraInput", "");
     const minimumOrder = document.getElementById("addItemMinimumOrder");
     if (minimumOrder) minimumOrder.value = "-";
     setAddItemEquipmentState(false);
@@ -2218,6 +2385,8 @@ function setAddItemEquipmentState(isEquipment) {
     if (!input) return;
     setNumberControlDisabledState(wrapper, input, isEquipment, "-", "1");
     setNumberControlDisabledState(minimumWrapper, minimumInput, isEquipment, "-", "-");
+    setRowHiddenByControl(wrapper, isEquipment);
+    setRowHiddenByControl(minimumWrapper, isEquipment);
     setToolToggleVisual(toggle, isEquipment);
     updateAddItemHardwareButtonsUI();
 }
@@ -2246,7 +2415,7 @@ function updateAddItemHardwareButtonsUI() {
         barcodeBtn.classList.toggle("has-value", !!barcodeValue);
     }
     if (nfcBtn) {
-        nfcBtn.textContent = nfcValue ? `NFC: ${nfcValue}` : "NFC Ready (Tap)";
+        nfcBtn.textContent = nfcValue ? "NFC Tag Assigned" : "NFC Ready (Tap)";
         nfcBtn.classList.toggle("has-value", !!nfcValue);
     }
 }
@@ -2298,34 +2467,42 @@ async function addItem(addAnother = false) {
 
         if (response.success) {
             const newItemId = response.id; // We get the UUID instantly!
+            let uploadedPhotoRows = [];
             
-            // Handle Offline Photos
             if (currentAddItemFiles.length > 0) {
                 if (!primaryPhotoIdentifier) primaryPhotoIdentifier = currentAddItemFiles[0].name;
-                for (let i = 0; i < currentAddItemFiles.length; i++) {
-                    const file = currentAddItemFiles[i];
-                    const fileName = `item-${newItemId}-${Date.now()}-${i}`;
-                    const isPrimary = file.name === primaryPhotoIdentifier;
-                    
-                    // Convert the image to text and save to the Offline Queue!
-                    const base64Data = await window.fileToBase64(file);
-                    await localDB.sync_photos_queue.add({
-                        record_id: newItemId, record_type: 'item', bucket: 'item-photos',
-                        file_name: fileName, base64_data: base64Data, is_primary: isPrimary, status: 'pending'
-                    });
+                if (window.isAppOnline) {
+                    const remotePayload = { ...payload, id: newItemId };
+                    await window.db.from("items").upsert([remotePayload]);
+                    uploadedPhotoRows = await uploadItemPhotoFiles(newItemId, currentAddItemFiles, primaryPhotoIdentifier, 0);
+                    await localDB.items.update(newItemId, { photos: uploadedPhotoRows });
+                } else {
+                    for (let i = 0; i < currentAddItemFiles.length; i++) {
+                        const file = currentAddItemFiles[i];
+                        const fileName = `item-${newItemId}-${Date.now()}-${i}`;
+                        const isPrimary = file.name === primaryPhotoIdentifier;
+                        const base64Data = await window.fileToBase64(file);
+                        await localDB.sync_photos_queue.add({
+                            record_id: newItemId, record_type: 'item', bucket: 'item-photos',
+                            file_name: fileName, base64_data: base64Data, is_primary: isPrimary, status: 'pending'
+                        });
+                    }
                 }
             }
             
             logAction("CREATE", "Item", name, `Added quantity: ${quantity}`);
             
             await refreshAllDataFromLocal(); // Instantly update the UI without waiting for internet!
-            window.processSyncQueue(); // Tell the engine to try uploading if we have a signal
+            await window.processSyncQueue(); // Tell the engine to try uploading if we have a signal
             if (addAnother) {
                 openAddItemModal();
             } else {
                 closeAddItemModal();
             }
         }
+    } catch (err) {
+        console.error("Add item failed:", err);
+        await customAlert(`Item save failed: ${err.message || err}`, "Save Failed");
     } finally { window.isProcessingTransaction = false; }
 }
 async function switchToItemEdit() {
@@ -2439,14 +2616,7 @@ async function saveItemEdits() {
         if (primaryPhotoIdentifier) await window.db.from("photos").update({ is_primary: true }).eq("file_path", primaryPhotoIdentifier);
         
         if (currentEditItemFiles.length > 0) {
-            for (let i = 0; i < currentEditItemFiles.length; i++) {
-                const file = currentEditItemFiles[i]; const fileName = `item-${itemId}-${Date.now()}-${i}`;
-                const { error: uploadError } = await window.db.storage.from("item-photos").upload(fileName, file);
-                if (!uploadError) {
-                    const isThisPrimary = file.name === primaryPhotoIdentifier || (!primaryPhotoIdentifier && i === 0 && currentItemForActions.photos.length === 0);
-                    await window.db.from("photos").insert([{ item_id: itemId, file_path: fileName, is_primary: isThisPrimary }]);
-                }
-            }
+            await uploadItemPhotoFiles(itemId, currentEditItemFiles, primaryPhotoIdentifier, currentItemForActions.photos?.length || 0);
         }
         // NEW: Dynamically write hyphen string indicator parameter if checkbox toggle is active
         const checkboxIsTool = document.getElementById("editItemIsEquipment")?.checked;
@@ -2514,10 +2684,115 @@ async function executeMoveItem() {
 /* =========================================================
    LOCATION ACTIONS (CRUD)
 ========================================================= */
+function ensureAddLocationLayout() {
+    const content = document.querySelector("#addLocationModal .modal-content");
+    ensureSimpleModalLayout({
+        modalId: "addLocationModal",
+        titleIds: [],
+        photoPreview: document.getElementById("addLocationPreviewsRow"),
+        barcodeId: "addLocationBarcode",
+        nfcId: "addLocationNFC",
+        rows: [
+            { label: "Name", control: document.getElementById("addLocationName") },
+            { label: "Description", control: document.getElementById("addLocationDescription") }
+        ],
+        afterScanRows: [
+            { label: "Category", control: document.getElementById("addLocationCategory") }
+        ],
+        actions: [
+            { button: content?.querySelector("button[onclick=\"confirmCancel('addLocationModal')\"]"), label: "Close", title: "Cancel" },
+            { button: content?.querySelector("button[onclick='addLocation(true)']"), label: "Save, add another", title: "Save and add another" },
+            { button: content?.querySelector("button[onclick='addLocation()']"), label: "Save", title: "Save" }
+        ]
+    });
+}
+
+function ensureEditLocationLayout() {
+    const content = document.querySelector("#locationActionsModal .modal-content");
+    ensureSimpleModalLayout({
+        modalId: "locationActionsModal",
+        titleIds: ["locationActionsName"],
+        photoPreview: document.getElementById("editLocationPreview")?.parentElement,
+        barcodeId: "editLocationBarcode",
+        nfcId: "editLocationNFC",
+        rows: [
+            { label: "Name", control: document.getElementById("editLocationName") },
+            { label: "Description", control: document.getElementById("editLocationDescription") }
+        ],
+        afterScanRows: [
+            { label: "Category", control: document.getElementById("editLocationCategory") }
+        ],
+        actions: [
+            { button: content?.querySelector("button[onclick=\"confirmCancel('locationActionsModal')\"]"), label: "Cancel", title: "Cancel" },
+            { button: content?.querySelector("button[onclick='saveLocationEdits()']"), label: "Save", title: "Save" },
+            { button: content?.querySelector("button[onclick='attemptDeleteLocation()']"), label: "Delete", title: "Delete" }
+        ]
+    });
+}
+
+function ensureAddTempLocationLayout() {
+    const content = document.querySelector("#addTempLocationModal .modal-content");
+    const nfcInput = ensureInput("addTempLocationNFC", content);
+    const buttonRow = content?.querySelector(".modal-buttons");
+    let saveAnotherButton = content?.querySelector("button[onclick='addTempLocation(true)']");
+    if (!saveAnotherButton && buttonRow) {
+        saveAnotherButton = document.createElement("button");
+        saveAnotherButton.type = "button";
+        saveAnotherButton.className = "btn-primary";
+        saveAnotherButton.style.background = "#10b981";
+        saveAnotherButton.style.borderColor = "#10b981";
+        saveAnotherButton.setAttribute("onclick", "addTempLocation(true)");
+        saveAnotherButton.textContent = "Save, add another";
+        const saveButton = content.querySelector("button[onclick='addTempLocation()']");
+        buttonRow.insertBefore(saveAnotherButton, saveButton || null);
+    }
+    ensureSimpleModalLayout({
+        modalId: "addTempLocationModal",
+        titleIds: [],
+        photoPreview: document.getElementById("addTempLocationPreviewsRow"),
+        barcodeId: "addTempLocationBarcode",
+        nfcId: nfcInput.id,
+        rows: [
+            { label: "Name", control: document.getElementById("addTempLocationName") },
+            { label: "Description", control: document.getElementById("addTempLocationDescription") }
+        ],
+        actions: [
+             { button: content?.querySelector("button[onclick=\"closeModal('addTempLocationModal')\"]"), label: "Cancel", title: "Cancel" },
+            { button: saveAnotherButton, label: "Save, add another", title: "Save and add another" },
+            { button: content?.querySelector("button[onclick='addTempLocation()']"), label: "Save", title: "Save" }
+        ]
+    });
+}
+
+function ensureEditTempLocationLayout() {
+    const content = document.querySelector("#tempLocationActionsModal .modal-content");
+    const nfcInput = ensureInput("editTempLocationNFC", content);
+    ensureSimpleModalLayout({
+        modalId: "tempLocationActionsModal",
+        titleIds: ["tempLocationActionsName"],
+        photoPreview: document.getElementById("editTempLocationPreview")?.parentElement,
+        barcodeId: "editTempLocationBarcode",
+        nfcId: nfcInput.id,
+        rows: [
+            { label: "Name", control: document.getElementById("editTempLocationName") },
+            { label: "Description", control: document.getElementById("editTempLocationDescription") }
+        ],
+        actions: [
+            { button: content?.querySelector("button[onclick=\"closeModal('tempLocationActionsModal')\"]"), label: "❌", title: "Cancel" },
+            { button: content?.querySelector("button[onclick='saveTempLocationEdits()']"), label: "✅", title: "Save" },
+            { button: content?.querySelector("button[onclick='attemptDeleteTempLocation()']"), label: "🗑", title: "Delete" }
+        ]
+    });
+}
+
 function openAddLocationModal() {
+    ensureAddLocationLayout();
     ["addLocationName", "addLocationDescription", "addLocationBarcode", "addLocationNFC"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    document.querySelector("#addLocationModal .modal-content")?._syncScanPair?.();
     const cat = document.getElementById("addLocationCategory"); if (cat) cat.value = "storage";
-    document.getElementById("addLocationPhotoInput").value = ""; document.getElementById("addLocationCameraInput").value = ""; document.getElementById("addLocationPreview").src = "../assets/images/folder-icon.jpg";
+    setElementValue("addLocationPhotoInput", "");
+    setElementValue("addLocationCameraInput", "");
+    setElementSrc("addLocationPreview", "../assets/images/folder-icon.jpg");
     currentAddLocationFiles = []; document.getElementById("addLocationModal").style.display = "flex";
     document.getElementById("addLocationModal").style.zIndex = pendingLocationPickerAfterCreate ? "15050" : "";
     markModalClean("addLocationModal");
@@ -2567,10 +2842,17 @@ async function addLocation(addAnother = false) {
 }
 
 function openLocationActions(id) {
+    ensureEditLocationLayout();
     editingLocationId = id; const loc = locationsAdmin.find(l => l.id === id); if (!loc) return;
-    document.getElementById("locationActionsName").textContent = loc.name; document.getElementById("editLocationName").value = loc.name || ""; document.getElementById("editLocationDescription").value = loc.location_description || ""; document.getElementById("editLocationBarcode").value = loc.barcode || ""; document.getElementById("editLocationNFC").value = loc.nfc || ""; document.getElementById("editLocationCategory").value = loc.category || "storage";
+    setElementText("locationActionsName", loc.name);
+    setElementValue("editLocationName", loc.name || "");
+    setElementValue("editLocationDescription", loc.location_description || "");
+    setElementValue("editLocationBarcode", loc.barcode || "");
+    setElementValue("editLocationNFC", loc.nfc || loc.nfc_tag || "");
+    setElementValue("editLocationCategory", loc.category || "storage");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
     const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    document.querySelector("#locationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("locationActionsModal").style.display = "flex";
     markModalClean("locationActionsModal");
 }
@@ -2613,41 +2895,40 @@ async function attemptDeleteLocation() {
    TEMP LOCATIONS ACTIONS (CRUD)
 ========================================================= */
 function openAddTempLocationModal() {
-    document.getElementById("addTempLocationName").value = ""; document.getElementById("addTempLocationDescription").value = ""; document.getElementById("addTempLocationBarcode").value = "";
-    document.getElementById("addTempLocationPhotoInput").value = ""; document.getElementById("addTempLocationCameraInput").value = ""; document.getElementById("addTempLocationPreview").src = "../assets/images/folder-icon.jpg";
+    ensureAddTempLocationLayout();
+    setElementValue("addTempLocationName", "");
+    setElementValue("addTempLocationDescription", "");
+    setElementValue("addTempLocationBarcode", "");
+    setElementValue("addTempLocationNFC", "");
+    document.querySelector("#addTempLocationModal .modal-content")?._syncScanPair?.();
+    setElementValue("addTempLocationPhotoInput", "");
+    setElementValue("addTempLocationCameraInput", "");
+    setElementSrc("addTempLocationPreview", "../assets/images/folder-icon.jpg");
     currentAddLocationFiles = []; document.getElementById("addTempLocationModal").style.display = "flex";
 }
 
-async function addTempLocation() {
-    if (!window.isAppOnline) return await customAlert("You must be connected to the internet to create an assignee.", "Offline Mode");
-    const name = document.getElementById("addTempLocationName").value; const desc = document.getElementById("addTempLocationDescription").value; const barcode = document.getElementById("addTempLocationBarcode").value;
-    if (!name) return await customAlert("Please enter a name for the assignee.", "Missing Name");
-    if (barcode && !(await isHardwareTagUnique(barcode))) return await customAlert("That ID code is already in use.", "Duplicate Code");
 
-    let uploadedPhotoPath = null;
-    if (currentAddLocationFiles.length > 0) {
-        const file = currentAddLocationFiles[0]; const fileName = `temp-loc-${Date.now()}`;
-        const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, file);
-        if (!uploadError) uploadedPhotoPath = fileName;
-    }
-
-    const { error } = await withStatus(() => window.db.from("temp_locations").insert([{ name, description: desc, barcode, photo_path: uploadedPhotoPath }]), "Creating...");
-    if (!error) { closeModal('addTempLocationModal'); logAction("CREATE", "Temp Location", name, "Created new assignee profile"); await syncAfterWrite(); loadTempLocationsAdmin(); }
-}
 
 function openTempLocationActions(id) {
+    ensureEditTempLocationLayout();
     editingTempLocationId = id; const loc = tempLocationsAdmin.find(l => l.id === id); if (!loc) return;
-    document.getElementById("tempLocationActionsName").textContent = loc.name; document.getElementById("editTempLocationName").value = loc.name || ""; document.getElementById("editTempLocationDescription").value = loc.description || ""; document.getElementById("editTempLocationBarcode").value = loc.barcode || "";
+    setElementText("tempLocationActionsName", loc.name);
+    setElementValue("editTempLocationName", loc.name || "");
+    setElementValue("editTempLocationDescription", loc.description || "");
+    setElementValue("editTempLocationBarcode", loc.barcode || "");
+    setElementValue("editTempLocationNFC", loc.nfc_tag || "");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
     const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    document.querySelector("#tempLocationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("tempLocationActionsModal").style.display = "flex";
 }
 
 async function saveTempLocationEdits() {
     if (!window.isAppOnline) return await customAlert("You must be connected to the internet to save edits.", "Offline Mode");
     if (!editingTempLocationId) return;
-    const barcode = document.getElementById("editTempLocationBarcode").value; const name = document.getElementById("editTempLocationName").value;
+    const barcode = document.getElementById("editTempLocationBarcode").value; const nfc_tag = document.getElementById("editTempLocationNFC")?.value || ""; const name = document.getElementById("editTempLocationName").value;
     if (barcode && !(await isHardwareTagUnique(barcode, editingTempLocationId))) return await customAlert("Barcode in use.", "Duplicate Code");
+    if (nfc_tag && !(await isHardwareTagUnique(nfc_tag, editingTempLocationId))) return await customAlert("NFC tag in use.", "Duplicate Code");
 
     let photoPath = tempLocationsAdmin.find(l => l.id === editingTempLocationId)?.photo_path || null;
     if (currentEditLocationFile) {
@@ -2655,7 +2936,7 @@ async function saveTempLocationEdits() {
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
-    const payload = { name, description: document.getElementById("editTempLocationDescription").value, barcode, photo_path: photoPath };
+    const payload = { name, description: document.getElementById("editTempLocationDescription").value, barcode, nfc_tag, photo_path: photoPath };
     const { error } = await withStatus(() => window.db.from("temp_locations").update(payload).eq("id", editingTempLocationId), "Saving updates...");
     if (!error) { closeModal('tempLocationActionsModal'); logAction("UPDATE", "Temp Location", name, "Updated assignee details"); await syncAfterWrite(); loadTempLocationsAdmin(); }
 }
@@ -2742,17 +3023,17 @@ function updateEditModalHardwareButtonsUI() {
             barBtn.style.color = "#0369a1";
             barBtn.style.borderColor = "#7dd3fc";
         } else {
-            barBtn.textContent = "📷 No Barcode Found";
+            barBtn.textContent = "No Barcode Found";
             barBtn.classList.toggle("has-value", false);
             barBtn.style.background = "#f8fafc";
             barBtn.style.color = "#1e293b";
             barBtn.style.borderColor = "#cbd5e1";
         }
     }
-    
+
     if (nfcBtn) {
         if (editModalActiveNfcTagString.trim() !== "") {
-            nfcBtn.textContent = "📡 NFC Tag Assigned";
+            nfcBtn.textContent = "NFC Tag Assigned";
             nfcBtn.classList.toggle("has-value", true);
             nfcBtn.style.background = "#dcfce7";
             nfcBtn.style.color = "#15803d";
@@ -2800,6 +3081,8 @@ function handleEquipmentCheckboxToggle(isChecked) {
     setToolToggleVisual(toggle, isChecked);
     setNumberControlDisabledState(qtyWrapper, qtyInput, isChecked, "-", "1");
     setNumberControlDisabledState(minimumWrapper, minimumInput, isChecked, "-", "-");
+    setRowHiddenByControl(qtyWrapper, isChecked);
+    setRowHiddenByControl(minimumWrapper, isChecked);
 }
 
 async function attemptDeleteItem() {
@@ -2835,14 +3118,7 @@ async function saveItemEdits() {
         if (primaryPhotoIdentifier) await window.db.from("photos").update({ is_primary: true }).eq("file_path", primaryPhotoIdentifier);
         
         if (currentEditItemFiles.length > 0) {
-            for (let i = 0; i < currentEditItemFiles.length; i++) {
-                const file = currentEditItemFiles[i]; const fileName = `item-${itemId}-${Date.now()}-${i}`;
-                const { error: uploadError } = await window.db.storage.from("item-photos").upload(fileName, file);
-                if (!uploadError) {
-                    const isThisPrimary = file.name === primaryPhotoIdentifier || (!primaryPhotoIdentifier && i === 0 && currentItemForActions.photos.length === 0);
-                    await window.db.from("photos").insert([{ item_id: itemId, file_path: fileName, is_primary: isThisPrimary }]);
-                }
-            }
+            await uploadItemPhotoFiles(itemId, currentEditItemFiles, primaryPhotoIdentifier, currentItemForActions.photos?.length || 0);
         }
         
         const checkboxIsTool = document.getElementById("editItemIsEquipment")?.checked;
@@ -2868,6 +3144,9 @@ async function saveItemEdits() {
             if (currentTempLocationId) await loadTempLocationDetails(currentTempLocationId); else if (currentLocationId === "unallocated") await loadUnallocatedItems();
             else if (currentLocationId) await loadLocation(currentLocationId); else await loadRootLocations();
         }
+    } catch (err) {
+        console.error("Save item edits failed:", err);
+        await customAlert(`Item update failed: ${err.message || err}`, "Save Failed");
     } finally { window.isProcessingTransaction = false; }
 }
 
@@ -2960,9 +3239,13 @@ async function executeMoveItem() {
 }
 
 function openAddLocationModal() {
+    ensureAddLocationLayout();
     ["addLocationName", "addLocationDescription", "addLocationBarcode", "addLocationNFC"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    document.querySelector("#addLocationModal .modal-content")?._syncScanPair?.();
     const cat = document.getElementById("addLocationCategory"); if (cat) cat.value = "storage";
-    document.getElementById("addLocationPhotoInput").value = ""; document.getElementById("addLocationCameraInput").value = ""; document.getElementById("addLocationPreview").src = "../assets/images/folder-icon.jpg";
+    setElementValue("addLocationPhotoInput", "");
+    setElementValue("addLocationCameraInput", "");
+    setElementSrc("addLocationPreview", "../assets/images/folder-icon.jpg");
     currentAddLocationFiles = []; document.getElementById("addLocationModal").style.display = "flex";
     document.getElementById("addLocationModal").style.zIndex = pendingLocationPickerAfterCreate ? "15050" : "";
     markModalClean("addLocationModal");
@@ -3010,10 +3293,17 @@ async function addLocation(addAnother = false) {
 }
 
 function openLocationActions(id) {
+    ensureEditLocationLayout();
     editingLocationId = id; const loc = locationsAdmin.find(l => l.id === id); if (!loc) return;
-    document.getElementById("locationActionsName").textContent = loc.name; document.getElementById("editLocationName").value = loc.name || ""; document.getElementById("editLocationDescription").value = loc.location_description || ""; document.getElementById("editLocationBarcode").value = loc.barcode || ""; document.getElementById("editLocationNFC").value = loc.nfc || ""; document.getElementById("editLocationCategory").value = loc.category || "storage";
+    setElementText("locationActionsName", loc.name);
+    setElementValue("editLocationName", loc.name || "");
+    setElementValue("editLocationDescription", loc.location_description || "");
+    setElementValue("editLocationBarcode", loc.barcode || "");
+    setElementValue("editLocationNFC", loc.nfc || loc.nfc_tag || "");
+    setElementValue("editLocationCategory", loc.category || "storage");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
     const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    document.querySelector("#locationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("locationActionsModal").style.display = "flex";
     markModalClean("locationActionsModal");
 }
@@ -3052,16 +3342,24 @@ async function attemptDeleteLocation() {
 }
 
 function openAddTempLocationModal() {
-    document.getElementById("addTempLocationName").value = ""; document.getElementById("addTempLocationDescription").value = ""; document.getElementById("addTempLocationBarcode").value = "";
-    document.getElementById("addTempLocationPhotoInput").value = ""; document.getElementById("addTempLocationCameraInput").value = ""; document.getElementById("addTempLocationPreview").src = "../assets/images/folder-icon.jpg";
+    ensureAddTempLocationLayout();
+    setElementValue("addTempLocationName", "");
+    setElementValue("addTempLocationDescription", "");
+    setElementValue("addTempLocationBarcode", "");
+    setElementValue("addTempLocationNFC", "");
+    document.querySelector("#addTempLocationModal .modal-content")?._syncScanPair?.();
+    setElementValue("addTempLocationPhotoInput", "");
+    setElementValue("addTempLocationCameraInput", "");
+    setElementSrc("addTempLocationPreview", "../assets/images/folder-icon.jpg");
     currentAddLocationFiles = []; document.getElementById("addTempLocationModal").style.display = "flex";
 }
 
-async function addTempLocation() {
+async function addTempLocation(addAnother = false) {
     if (!window.isAppOnline) return await customAlert("You must be connected to the internet to create an assignee.", "Offline Mode");
-    const name = document.getElementById("addTempLocationName").value; const desc = document.getElementById("addTempLocationDescription").value; const barcode = document.getElementById("addTempLocationBarcode").value;
+    const name = document.getElementById("addTempLocationName").value; const desc = document.getElementById("addTempLocationDescription").value; const barcode = document.getElementById("addTempLocationBarcode").value; const nfc_tag = document.getElementById("addTempLocationNFC")?.value || "";
     if (!name) return await customAlert("Please enter a name for the assignee.", "Missing Name");
     if (barcode && !(await isHardwareTagUnique(barcode))) return await customAlert("That ID code is already in use.", "Duplicate Code");
+    if (nfc_tag && !(await isHardwareTagUnique(nfc_tag))) return await customAlert("That NFC tag is already in use.", "Duplicate Code");
 
     let uploadedPhotoPath = null;
     if (currentAddLocationFiles.length > 0) {
@@ -3070,23 +3368,36 @@ async function addTempLocation() {
         if (!uploadError) uploadedPhotoPath = fileName;
     }
 
-    const { error } = await withStatus(() => window.db.from("temp_locations").insert([{ name, description: desc, barcode, photo_path: uploadedPhotoPath }]), "Creating...");
-    if (!error) { closeModal('addTempLocationModal'); logAction("CREATE", "Temp Location", name, "Created new assignee profile"); await syncAfterWrite(); loadTempLocationsAdmin(); }
+    const { error } = await withStatus(() => window.db.from("temp_locations").insert([{ name, description: desc, barcode, nfc_tag, photo_path: uploadedPhotoPath }]), "Creating...");
+    if (!error) {
+        logAction("CREATE", "Temp Location", name, "Created new assignee profile");
+        await syncAfterWrite();
+        loadTempLocationsAdmin();
+        if (addAnother) openAddTempLocationModal();
+        else closeModalClean('addTempLocationModal');
+    }
 }
 
 function openTempLocationActions(id) {
+    ensureEditTempLocationLayout();
     editingTempLocationId = id; const loc = tempLocationsAdmin.find(l => l.id === id); if (!loc) return;
-    document.getElementById("tempLocationActionsName").textContent = loc.name; document.getElementById("editTempLocationName").value = loc.name || ""; document.getElementById("editTempLocationDescription").value = loc.description || ""; document.getElementById("editTempLocationBarcode").value = loc.barcode || "";
+    setElementText("tempLocationActionsName", loc.name);
+    setElementValue("editTempLocationName", loc.name || "");
+    setElementValue("editTempLocationDescription", loc.description || "");
+    setElementValue("editTempLocationBarcode", loc.barcode || "");
+    setElementValue("editTempLocationNFC", loc.nfc_tag || "");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
     const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    document.querySelector("#tempLocationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("tempLocationActionsModal").style.display = "flex";
 }
 
 async function saveTempLocationEdits() {
     if (!window.isAppOnline) return await customAlert("You must be connected to the internet to save edits.", "Offline Mode");
     if (!editingTempLocationId) return;
-    const barcode = document.getElementById("editTempLocationBarcode").value; const name = document.getElementById("editTempLocationName").value;
+    const barcode = document.getElementById("editTempLocationBarcode").value; const nfc_tag = document.getElementById("editTempLocationNFC")?.value || ""; const name = document.getElementById("editTempLocationName").value;
     if (barcode && !(await isHardwareTagUnique(barcode, editingTempLocationId))) return await customAlert("Barcode in use.", "Duplicate Code");
+    if (nfc_tag && !(await isHardwareTagUnique(nfc_tag, editingTempLocationId))) return await customAlert("NFC tag in use.", "Duplicate Code");
 
     let photoPath = tempLocationsAdmin.find(l => l.id === editingTempLocationId)?.photo_path || null;
     if (currentEditLocationFile) {
@@ -3094,7 +3405,7 @@ async function saveTempLocationEdits() {
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
-    const payload = { name, description: document.getElementById("editTempLocationDescription").value, barcode, photo_path: photoPath };
+    const payload = { name, description: document.getElementById("editTempLocationDescription").value, barcode, nfc_tag, photo_path: photoPath };
     const { error } = await withStatus(() => window.db.from("temp_locations").update(payload).eq("id", editingTempLocationId), "Saving updates...");
     if (!error) { closeModal('tempLocationActionsModal'); logAction("UPDATE", "Temp Location", name, "Updated assignee details"); await syncAfterWrite(); loadTempLocationsAdmin(); }
 }
@@ -3524,10 +3835,57 @@ function clickSearchTag(tagName) {
     activeSearchTags = [tagName]; document.getElementById("globalSearchInput").value = ""; renderSearchFilterPills("tag"); handleGlobalSearch("");
 }
 
+function setupTagSearchInput(mode) {
+    const select = document.getElementById(mode === "add" ? "itemTagSelect" : "editItemTagSelect");
+    if (!select || select.dataset.searchReady === "true") return;
+    select.dataset.searchReady = "true";
+    select.style.display = "none";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "tag-search-wrapper";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = mode === "add" ? "itemTagSearchInput" : "editItemTagSearchInput";
+    input.className = "tag-search-input";
+    input.placeholder = "Search tags...";
+    input.autocomplete = "off";
+    const list = document.createElement("div");
+    list.className = "tag-search-options";
+
+    const renderOptions = () => {
+        const selected = mode === "add" ? activeSelectedAddTags : activeSelectedEditTags;
+        const term = input.value.trim().toLowerCase();
+        const matches = globalCachedTags
+            .map(tag => tag.name)
+            .filter(name => !selected.includes(name) && (!term || name.toLowerCase().includes(term)));
+        list.innerHTML = "";
+        matches.forEach(name => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.textContent = name;
+            option.onclick = () => {
+                handleTagSelection(mode, name);
+                input.value = "";
+                renderOptions();
+                input.focus();
+            };
+            list.appendChild(option);
+        });
+        list.style.display = matches.length ? "block" : "none";
+    };
+
+    input.addEventListener("focus", renderOptions);
+    input.addEventListener("input", renderOptions);
+    input.addEventListener("blur", () => setTimeout(() => { list.style.display = "none"; }, 160));
+    wrapper.append(input, list);
+    select.parentElement.insertBefore(wrapper, select);
+}
+
 function handleTagSelection(mode, tagName) {
     if (!tagName) return; const targetArray = mode === 'add' ? activeSelectedAddTags : activeSelectedEditTags;
     if (!targetArray.includes(tagName)) { targetArray.push(tagName); renderActiveTagPills(mode); }
-    document.getElementById(mode === 'add' ? "itemTagSelect" : "editItemTagSelect").value = "";
+    const select = document.getElementById(mode === 'add' ? "itemTagSelect" : "editItemTagSelect");
+    if (select) select.value = "";
 }
 
 function removeSelectedTagBadge(mode, tagName) {
@@ -3720,7 +4078,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
 
     const cancelBtn = document.getElementById("barcodeScannerCancelBtn");
     if (cancelBtn) {
-        cancelBtn.textContent = targetInputId === "FAST_QTY_ADJUST" ? "Cancel adjustment" : "Close scanner";
+        cancelBtn.textContent = targetInputId === "FAST_QTY_ADJUST" ? "Cancel adjustment" : "❌";
     }
     
     const container = document.getElementById("scannerReaderContainer");
@@ -3733,7 +4091,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
     if (!uiWrapper) {
         uiWrapper = document.createElement("div");
         uiWrapper.id = "unifiedScannerUI";
-        uiWrapper.style.marginTop = "15px";
+        uiWrapper.style.marginTop = "5px";
         uiWrapper.style.display = "flex";
         uiWrapper.style.flexDirection = "column";
         uiWrapper.style.gap = "10px";
@@ -3759,7 +4117,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
     // 3. START NFC BACKGROUND ENGINE
     const nfcStatusDiv = document.getElementById("nfcStatusDisplay");
     if ("NDEFReader" in window && window.isSecureContext) {
-        nfcStatusDiv.innerHTML = "📡 NFC Active: Ready to scan";
+        nfcStatusDiv.innerHTML = "NFC Ready";
         nfcStatusDiv.style.color = "#15803d";
         nfcStatusDiv.style.background = "#dcfce7";
         nfcStatusDiv.style.borderColor = "#bbf7d0";
@@ -3773,13 +4131,13 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
                 executeUnifiedScannerRouting(getNfcTextFromEvent(event), targetInputId);
             };
         } catch (err) {
-            nfcStatusDiv.innerHTML = "⚠️ NFC Error: Please check device settings.";
+            nfcStatusDiv.innerHTML = "⚠️ NFC Error";
             nfcStatusDiv.style.color = "#b91c1c";
             nfcStatusDiv.style.background = "#fee2e2";
             nfcStatusDiv.style.borderColor = "#fecaca";
         }
     } else {
-        nfcStatusDiv.innerHTML = "⚠️ NFC Unavailable (Requires HTTPS & Compatible Device)";
+        nfcStatusDiv.innerHTML = "⚠️ NFC Unavailable";
         nfcStatusDiv.style.color = "#9a3412";
         nfcStatusDiv.style.background = "#ffedd5";
         nfcStatusDiv.style.borderColor = "#fed7aa";
@@ -3853,6 +4211,14 @@ window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId
         }
         updateEditModalHardwareButtonsUI();
 
+    } else if (targetInputId === 'addItemHardwareTunnel') {
+        if (cleanToken.includes(':')) {
+            document.getElementById("addItemNFC").value = cleanToken;
+        } else {
+            document.getElementById("addItemBarcode").value = cleanToken;
+        }
+        updateAddItemHardwareButtonsUI();
+
     } else if (targetInputId === 'assignItemBarcodeTunnel' || targetInputId === 'assignItemNfcTunnel') {
         const match = tempLocationsAdmin.find(t => (t.barcode && t.barcode.trim().toLowerCase() === lowerToken) || (t.nfc_tag && t.nfc_tag.trim().toLowerCase() === lowerToken));
         if (match) { document.getElementById("assignItemSelect").value = match.id; }
@@ -3877,6 +4243,7 @@ window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId
         if (targetEl) targetEl.value = cleanToken;
 
         if (targetInputId === 'addItemBarcode' || targetInputId === 'addItemNFC') updateAddItemHardwareButtonsUI();
+        document.querySelectorAll(".modal-content").forEach(content => content._syncScanPair?.());
         if (targetInputId === 'moveItemLocationBarcode') handleLocationBarcodeLookup(cleanToken);
         if (targetInputId === 'assignItemBarcode') handleAssignBarcodeLookup(cleanToken);
 
@@ -4128,6 +4495,28 @@ function findMatchingInventoryRow(items, sourceItem, assignedTo, locationId = so
         if (i.nfc_tag && sourceItem.nfc_tag && i.nfc_tag.trim().toLowerCase() === sourceItem.nfc_tag.trim().toLowerCase()) return true;
         return String(i.name || "").trim().toLowerCase() === String(sourceItem.name || "").trim().toLowerCase();
     });
+}
+
+async function uploadItemPhotoFiles(itemId, filesArray, primaryIdentifier, existingPhotoCount = 0) {
+    const insertedPhotos = [];
+    if (!itemId || !filesArray || filesArray.length === 0) return insertedPhotos;
+
+    for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i];
+        const fileName = `item-${itemId}-${Date.now()}-${i}`;
+        const isPrimary = file.name === primaryIdentifier || (!primaryIdentifier && i === 0 && existingPhotoCount === 0);
+        const { error: uploadError } = await window.db.storage
+            .from("item-photos")
+            .upload(fileName, file, { upsert: true, contentType: file.type || "image/jpeg" });
+        if (uploadError) throw uploadError;
+
+        const row = { item_id: itemId, file_path: fileName, is_primary: isPrimary };
+        const { error: insertError } = await window.db.from("photos").insert([row]);
+        if (insertError) throw insertError;
+        insertedPhotos.push({ file_path: fileName, is_primary: isPrimary });
+    }
+
+    return insertedPhotos;
 }
 
 async function createClonedItemRow(sourceItem, overrides) {

@@ -4,17 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory | Warm Right Ltd</title>
-    
+
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png">
-    <link rel="manifest" href="assets/images/site.webmanifest">
-
-    <link rel="manifest" href="../manifest.json">
-    <link rel="stylesheet" href="../assets/css/variables.css">  
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#004a99">
+    <link rel="stylesheet" href="../assets/css/variables.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/inventory-style.css">
-    
+
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="../assets/js/offline-engine.js"></script>
 
@@ -26,22 +25,21 @@
 
     <script>window.adminPageTitle = "Inventory Management";</script>
 
-    <style>        
+    <style>
         /* DESKTOP STYLES FOR FAST RETURN */
         .fast-actions-desktop {
-            display: flex; 
-            gap: 8px; 
-            align-items: center; 
+            display: flex;
+            gap: 8px;
+            align-items: center;
             margin-left: auto;
         }
 
         @media (max-width: 768px) {
-            .inventory-app-header { display: none !important; }
             #searchTypeFilter { width: 35% !important; padding: 8px !important; font-size: 12px !important; }
-            
+
             /* HIDES FAST RETURN ON MOBILE */
             .fast-actions-desktop { display: none !important; }
-        
+
             .inventory-nav-bar { display: flex; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; border-radius: 8px; overflow: hidden; }
             .tab-link { flex: 1; text-align: center; padding: 12px 5px; cursor: pointer; text-decoration: none; color: #475569; font-weight: 600; border-bottom: 3px solid transparent; }
             .tab-link:hover { background: #f8fafc; color: #004a99; }
@@ -94,7 +92,7 @@
             .fab-item { background: #ff8c00; }
             .fab-location { background: #004a99; font-size: 22px; }
             .fab-quick { background: #10b981; font-size: 22px; }
-            
+
             /* Quick Actions Menu Stack */
             .fab-stack {
                 position: absolute; bottom: 100%; display: flex; flex-direction: column; align-items: center;
@@ -106,26 +104,32 @@
     </style>
 </head>
 <body style="visibility: hidden;">
-    
- 
-    
+
+
+
     <div class="container-fluid" id="inventoryContainer">
 
         <div class="inventory-app-header">
             <div class="app-branding">
-                <div class="app-logo-icon">📦</div>
+                <a class="app-logo-link" href="https://fieldhub.uk/appscreen.html" title="FieldHub">
+                    <img class="app-logo-img" src="assets/images/logo.png" alt="FieldHub">
+                </a>
                 <div class="app-titles">
-                    <h2>Warm Right</h2>
                     <h1>Inventory</h1>
                 </div>
             </div>
             <div class="header-actions">
                 <button class="btn-primary app-add-btn" onclick="toggleFilterToolbar()">Change view</button>
                 <button class="btn-primary app-add-btn" onclick="openAddItemModal()">+ Add</button>
-                <button class="btn-primary app-add-btn" onclick="logoutUser()">Logout</button>
+                <div class="header-user">
+                 
+                    <span id="headerUserName" class="header-user-name">User</span>
+                       <img id="headerUserAvatar" class="header-user-avatar" src="assets/images/logo.png" alt="">
+                    <button class="btn-primary app-add-btn logout-btn" onclick="logoutUser()">Log out</button>
+                </div>
             </div>
         </div>
-        
+
         <nav class="inventory-nav-bar">
             <a class="tab-link active" id="tab-items" onclick="showPage('pageItems')" title="Items Browser">
                 <span class="tab-icon">🔍</span><span class="tab-text">Items</span>
@@ -148,7 +152,7 @@
         </nav>
 
         <div id="pageItems" class="inventory-page active items-view-medium">
-            
+
              <div class="items-toolbar search-toolbar" style="display: flex; gap: 8px; align-items: center; padding: 12px 15px; border-radius: 10px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 12px;">
                 <select id="searchTypeFilter" autocomplete="off" onchange="handleSearchFilterTypeChange()" style="width: auto; margin-bottom: 0; padding: 10px 14px; border-radius: 8px; font-weight: 600;">
                     <option value="all" selected>🌐 Search All</option>
@@ -158,21 +162,20 @@
                     <option value="location">📦 Location</option>
                     <option value="barcode">📷 Hardware ID</option>
                 </select>
-                
+
                 <form onsubmit="document.getElementById('globalSearchInput').blur(); return false;" style="flex-grow: 1; display: flex; margin: 0; padding: 0;">
                     <div style="position: relative; flex-grow: 1; display: flex; align-items: center; margin-bottom: 0;">
                         <input type="search" id="globalSearchInput" placeholder="🔍 Search" oninput="handleGlobalSearch(this.value)" autocomplete="off" style="margin-bottom: 0; width: 100%; padding: 10px 35px 10px 15px; border: 1px solid #ddd; border-radius: 8px;">
                     </div>
                 </form>
 
-                <button class="btn-outline icon-btn" onclick="openBarcodeScannerModal()" title="Barcode Search" style="height: 42px; width: 42px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px;">📷</button>
-                <button class="btn-outline icon-btn" onclick="openNfcScannerModal()" title="NFC Search" style="height: 42px; width: 42px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px;">📡</button>
+                <button class="btn-outline icon-btn smart-scan-icon-btn" onclick="openBarcodeScannerModal()" title="Smart Scan Search" style="height: 42px; width: 42px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center;"></button>
             </div>
 
             <div id="searchFilterPillsRow" style="display: none; max-height:150px; overflow-y: auto; flex-wrap: wrap; gap: 8px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px;"></div>
 
 
-          
+
 
             <div class="location-nav"><div id="breadcrumb" style="font-weight: bold; font-size: 1.1em;">Items</div></div>
             <div id="locationTiles" class="items-grid"></div>
@@ -181,7 +184,7 @@
         </div>
 
         <div id="pageLocations" class="inventory-page">
-                      
+
             <div class="location-nav"><div id="breadcrumbLocations" style="font-weight: bold; font-size: 1.1em;">Locations</div></div>
             <div id="locationTilesAdmin" class="items-grid"></div>
             <div class="items-table-wrapper" id="locationsTableWrapper"></div>
@@ -195,7 +198,7 @@
                 </div>
                 <button class="btn-primary" onclick="openAddTempLocationModal()" style="background: #10b981; border-color: #10b981;">+ Add Temp Location</button>
             </div>
-            
+
             <div class="location-nav">
                 <div id="breadcrumbTempLocations" style="font-weight: bold; font-size: 1.1em;">
                     <span class="breadcrumb-link active">Assigned Log</span>
@@ -204,7 +207,7 @@
 
             <div id="tempLocationItemActionsToolbar" style="display: none; justify-content: space-between; align-items: center; background: #fff; padding: 12px 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: 15px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
                 <div style="text-align: left;">
-                                    
+
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn-outline" id="btnToggleStockUsageMode" onclick="toggleStockUsageMode()" style="border-color: #ef4444; color: #ef4444; font-weight: bold; font-size: 13px; height: 36px; padding: 0 14px;">🛠️ Use Stock Mode</button>
@@ -310,7 +313,7 @@
     <div style="margin-bottom: 10px;">
         <h3 style="margin: 0;">System Audit Log</h3>
     </div>
-    
+
     <div class="log-toolbar-row">
         <select id="logActionFilter" onchange="filterAuditLogs()">
             <option value="ALL">All Actions</option>
@@ -319,7 +322,7 @@
             <option value="CHECKOUT">Check-outs</option>
             <option value="RETURN">Returns</option>
         </select>
-        
+
         <select id="logDateFilter" onchange="filterAuditLogs()">
             <option value="FOREVER">Forever</option>
             <option value="TODAY">Today</option>
@@ -361,7 +364,7 @@
         </div>
 </div>
 
-            
+
 
 
 
@@ -430,10 +433,9 @@
                 <select id="itemLocationSelect" style="margin-bottom:0; flex:1;"></select>
                 <button class="btn-outline" style="height:42px; padding:10px 14px; font-weight:700;" onclick="openAddLocationFromItemModal('itemLocationSelect')">+</button>
             </div>
-            
-            
-            <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openBarcodeScannerModal('itemLocationTunnel')">📷</button>
-             <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openNfcScannerModal('itemLocationTunnel')">📡</button>
+
+
+            <button class="btn-outline smart-scan-icon-btn" style="padding: 10px; height: 42px; width: 42px;" onclick="openBarcodeScannerModal('itemLocationTunnel')" title="Smart scan location"></button>
 
             <label>Description</label><textarea id="itemDescription" rows="3"></textarea>
             <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
@@ -459,7 +461,7 @@
 
    <div id="itemEditModal" class="modal" style="z-index: 3500;">
         <div class="modal-content item-form-modal-content" style="max-width: 440px; width: 92%; padding: 20px; border-radius: 16px; overflow-y: auto; max-height: 92vh; text-align: left; box-sizing: border-box;">
-            
+
             <h3 class="item-form-title" style="margin: 0 0 15px 0; color: #004a99; font-size: 19px; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">Edit Item Details</h3>
 
             <div style="margin-bottom: 15px;">
@@ -469,7 +471,7 @@
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <input type="file" id="editItemPhotoInput" accept="image/*" multiple style="display: none;" onchange="handleMultipleFilesSelection(this, 'editItemPreviewsRow', 'edit-item')">
                 <button class="btn-outline" style="flex: 1; height: 38px; font-size: 13px; font-weight: 600; border-color: #cbd5e1;" onclick="document.getElementById('editItemPhotoInput').click()">📁 Upload</button>
-                
+
                 <input type="file" id="editItemCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleMultipleFilesSelection(this, 'editItemPreviewsRow', 'edit-item')">
                 <button class="btn-outline" style="flex: 1; height: 38px; font-size: 13px; font-weight: 600; border-color: #cbd5e1;" onclick="openPhotoCaptureModal('edit-item')">📷 Camera</button>
             </div>
@@ -485,9 +487,9 @@
             </div>
 
             <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-start;">
-                
+
                 <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0;">
-                    
+
                     <div id="editItemQtyWrapper" style="transition: opacity 0.2s ease;">
                         <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Quantity</label>
                         <div style="display: flex; align-items: center; gap: 6px;">
@@ -533,7 +535,7 @@
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <select id="editItemLocationSelect" style="height: 38px; padding: 4px 8px !important; font-size: 13px; margin-bottom: 0; flex-grow: 1; border-radius: 8px;"></select>
                     <button class="btn-outline icon-btn" onclick="openAddLocationFromItemModal('editItemLocationSelect')" title="Add Location" style="width: 38px; height: 38px; font-size: 18px; border-radius: 8px; flex-shrink: 0;">+</button>
-                    <button class="btn-outline icon-btn" onclick="openBarcodeScannerModal('editItemLocationSelect')" title="Scan Location Barcode" style="width: 38px; height: 38px; font-size: 14px; border-radius: 8px; flex-shrink: 0;">📁📷</button>
+                    <button class="btn-outline icon-btn smart-scan-icon-btn" onclick="openBarcodeScannerModal('editItemLocationSelect')" title="Smart scan location" style="width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;"></button>
                 </div>
             </div>
 
@@ -595,9 +597,9 @@
             </div>
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <input type="file" id="addTempLocationPhotoInput" accept="image/*" style="display: none;" onchange="previewTempLocationImage(this, 'addTempLocationPreview', 'add')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('addTempLocationPhotoInput').click()">📁 Upload Photo</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('addTempLocationPhotoInput').click()">📁 Upload</button>
                 <input type="file" id="addTempLocationCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewTempLocationImage(this, 'addTempLocationPreview', 'add')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('add-temp-location')">📷 Take Photo</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('add-temp-location')">📷 Photo</button>
             </div>
             <label>Assignee / Van Name</label><input id="addTempLocationName" type="text">
             <label>Description (Optional)</label><textarea id="addTempLocationDescription" rows="2"></textarea>
@@ -623,17 +625,17 @@
             </div>
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                 <input type="file" id="editTempLocationPhotoInput" accept="image/*" style="display: none;" onchange="previewTempLocationImage(this, 'editTempLocationPreview', 'edit')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('editTempLocationPhotoInput').click()">📁 Change Photo</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="document.getElementById('editTempLocationPhotoInput').click()">📁 Photo</button>
                 <input type="file" id="editTempLocationCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewTempLocationImage(this, 'editTempLocationPreview', 'edit')">
-                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('edit-temp-location')">📷 Take Photo</button>
+                <button class="btn-outline" style="font-size: 13px; flex: 1;" onclick="openPhotoCaptureModal('edit-temp-location')">📷 Photo</button>
                 <button class="btn-danger" style="font-size: 13px; padding: 5px 12px;" onclick="deleteTempLocationPhoto()">Remove</button>
             </div>
             <label>Name</label><input id="editTempLocationName" type="text">
             <label>Description</label><textarea id="editTempLocationDescription" rows="2"></textarea>
             <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 15px;">
                 <div style="flex-grow: 1;"><label>User ID / Tag</label><input id="editTempLocationBarcode" type="text" style="margin-bottom: 0;"></div>
-                <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openBarcodeScannerModal('editTempLocationBarcode')">📷 Barcode</button>
-                <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openNfcScannerModal('editTempLocationBarcode')">📡 NFC</button>
+                <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openBarcodeScannerModal('editTempLocationBarcode')">Barcode</button>
+                <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openNfcScannerModal('editTempLocationBarcode')">NFC</button>
             </div>
             <div class="modal-buttons" style="margin-top: 20px; justify-content: space-between;">
                 <button class="btn-danger" onclick="attemptDeleteTempLocation()">Delete Temp Location</button>
@@ -682,23 +684,23 @@
                 <div id="detailItemQtyBadge" class="item-card-qty-badge" style="top: 15px; left: 15px; font-size: 13px; padding: 4px 12px; border-radius: 6px;">Qty: 0</div>
                 <button id="lightboxLauncherBtn" class="expand-gallery-trigger" onclick="openLightbox()">⛶ View Fullscreen</button>
             </div>
-            
+
             <div id="detailAssignedBanner" style="display: none; background: #f0fdf4; color: #10b981; padding: 12px 25px; font-weight: bold; border-bottom: 1px solid #d1fae5; align-items: center; gap: 8px;">
                 <span>👤 Checked Out To:</span> <span id="detailAssignedTargetName" style="color: #047857;">---</span>
             </div>
 
             <div class="item-detail-thumbs" style="padding: 0 25px; margin-top: 10px;"><div id="detailItemThumbsRow" class="view-thumb-strip"></div></div>
-            
+
             <div class="item-detail-body" style="padding: 25px; display: flex; gap: 20px; text-align: left;">
-                
+
                 <div class="item-detail-main" style="flex: 1; min-width: 0;">
                     <h2 id="detailItemName" style="margin: 0 0 5px 0; color: #004a99; font-size: 22px; font-weight: 700; line-height: 1.2;">Item Name</h2>
                     <div id="detailItemLocation" class="item-detail-location" style="font-size: 13px; color: #ff8c00; font-weight: 600; margin-bottom: 8px;">📍 Location Path</div>
                     <div id="detailItemCategory" class="item-detail-category">Category</div>
-                    
+
                     <label style="margin-top: 12px; display: block; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Description</label>
                     <p id="detailItemDescription" style="margin: 4px 0 15px 0; font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-wrap;">No description provided.</p>
-                    
+
                     <label style="display: block; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Tags</label>
                     <div id="detailItemTagsContainer" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; margin-bottom: 15px; max-width: 100%;"></div>
 
@@ -730,7 +732,7 @@
             <h3 style="margin-top: 0; color: #004a99; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <span style="font-size: 24px;">👤</span> Assign Item
             </h3>
-            
+
             <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
                 <h4 id="assignModalItemName" style="margin: 0; color: #0f172a; font-size: 17px;">Item Name</h4>
                 <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b;">Available in Warehouse: <b id="assignModalMaxQty" style="color:#004a99;">0</b></p>
@@ -780,7 +782,7 @@
             </div>
         </div>
     </div>
-    
+
     <div id="moveItemModal" class="modal" style="z-index: 10005;">
         <div class="modal-content" style="max-width: 440px;">
             <h3>📦 Relocate Item</h3>
@@ -788,8 +790,7 @@
             <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
                 <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 20px; width: 100%;">
                     <div style="flex-grow: 1;"><label>Scan Target Barcode/NFC</label><input id="moveItemLocationBarcode" type="text" style="margin-bottom: 0;" oninput="handleLocationBarcodeLookup(this.value)"></div>
-                    <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openBarcodeScannerModal('moveItemLocationBarcode')">📷 Barcode</button>
-                    <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="openNfcScannerModal('moveItemLocationBarcode')">📡 NFC</button>
+                    <button class="btn-outline smart-scan-icon-btn" style="padding: 10px; height: 42px; width: 42px;" onclick="openBarcodeScannerModal('moveItemLocationBarcode')" title="Smart scan location"></button>
                 </div>
             </div>
             <label>Location Tree Destination</label>
@@ -806,15 +807,15 @@
 
     <div id="barcodeScannerModal" class="modal" style="z-index: 10010;">
         <div class="modal-content" style="max-width: 440px; text-align: center;">
-            <h3>🤳 Barcode Scanner</h3>
-            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Hold barcode steady inside the window boundaries...</p>
+             <div  style="justify-content: space-between;display:flex; margin-top: 5px;">
+                <h3 style="margin-left:20px;">Smart Scan</h3>
+                <button class="btn-outline" style="display:inline-block; border:none;" id="barcodeScannerCancelBtn" onclick="cancelBarcodeScannerModal()">❌</button>
+            </div>
             <div style="position: relative; width: 100%; max-width: 440px; margin: 0 auto; margin-bottom: 15px;">
-                <div id="scannerReaderContainer" style="width: 100%; min-height: 280px; background: #111; border-radius: 12px; overflow: hidden;"></div>       
+                <div id="scannerReaderContainer" style="width: 100%; min-height: 280px; background: #111; border-radius: 12px; overflow: hidden;"></div>
                 <button onclick="switchScannerCamera('main')" style="position: absolute; top: 12px; right: 12px; z-index: 100; background: rgba(15, 23, 42, 0.75); color: white; border: none; border-radius: 50%; width: 42px; height: 42px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); backdrop-filter: blur(4px);">🔄</button>
             </div>
-            <div class="modal-buttons" style="justify-content: center; margin-top: 20px;">
-                <button class="btn-outline w-100" id="barcodeScannerCancelBtn" onclick="cancelBarcodeScannerModal()">Close scanner</button>
-            </div>
+
         </div>
     </div>
 
@@ -1026,12 +1027,12 @@
 
         <div style="display: flex; flex-direction: column; gap: 14px;">
             <div class="toolbar-left" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;">
-                
+
                 <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
                     <label style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; margin:0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">View</label>
                     <div class="custom-select-wrapper">
                         <div class="custom-select-trigger" onclick="toggleCustomSelect(this)" style="padding: 0 6px; justify-content: center; font-size: 11px;">
-                            <span class="trigger-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Medium</span> 
+                            <span class="trigger-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Medium</span>
                             <span class="caret" style="font-size:9px; color:#94a3b8; margin-left:2px;">▼</span>
                         </div>
                         <ul class="custom-select-options">
@@ -1047,7 +1048,7 @@
                     <label style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; margin:0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Mode</label>
                     <div class="custom-select-wrapper">
                         <div class="custom-select-trigger" onclick="toggleCustomSelect(this)" style="padding: 0 6px; justify-content: center; font-size: 11px;">
-                            <span class="trigger-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Folders</span> 
+                            <span class="trigger-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Folders</span>
                             <span class="caret" style="font-size:9px; color:#94a3b8; margin-left:2px;">▼</span>
                         </div>
                         <ul class="custom-select-options">
@@ -1061,7 +1062,7 @@
                     <label style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; margin:0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Organise</label>
                     <div class="custom-select-wrapper">
                         <div class="custom-select-trigger" onclick="toggleCustomSelect(this)" style="padding: 0 6px; justify-content: center; font-size: 11px;">
-                            <span class="trigger-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">A-Z</span> 
+                            <span class="trigger-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">A-Z</span>
                             <span class="caret" style="font-size:9px; color:#94a3b8; margin-left:2px;">▼</span>
                         </div>
                         <ul class="custom-select-options">
@@ -1073,7 +1074,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="fast-actions-desktop" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 4px; width: 100%;">
                 <span style="font-size: 11px; font-weight: 800; color: #10b981; text-transform: uppercase; margin-right: auto;">Fast Actions:</span>
                 <button class="btn-outline icon-btn" onclick="toggleFilterToolbar(); openBarcodeScannerModal('FAST_RETURN');" title="Barcode Fast-Return" style="height: 36px; min-width: 48px; border-color: #10b981; color: #10b981; border-radius: 10px; font-size: 14px; background: #f0fdf4; font-weight: bold;">📥 📷</button>
@@ -1082,7 +1083,18 @@
             </div>
         </div>
     </div>
-        <footer class="inventory-footer">support@fieldhub.uk &copy; 2026</footer>
+        <footer class="inventory-footer">
+            <div class="inventory-footer-brand">
+                <img src="assets/images/logo.png" alt="FieldHub">
+                <span>FieldHub &copy; 2026</span>
+            </div>
+            <div class="inventory-footer-support">
+                <span>For support:</span>
+                <span>visit: <a href="https://fieldhub.uk/support">FieldHub.uk/support</a></span>
+                <span>or email: <a href="mailto:support@FieldHub.uk">support@FieldHub.uk</a></span>
+            </div>
+            <button class="footer-logout-btn" onclick="logoutUser()">Log out</button>
+        </footer>
     </div>
 
     <div class="fab-container left-side" id="mobileFabContainer">
@@ -1109,7 +1121,7 @@
             </div>
             <button class="fab-btn fab-quick" id="fabQuickBtn" onclick="toggleFab()">⚡</button>
         </div>
-        
+
         <button class="fab-btn fab-location" id="fabLocationBtn" onclick="openAddLocationModal()">📦<span style="position:absolute; top:4px; right:6px; font-size:16px; font-weight:bold;">+</span></button>
         <button class="fab-btn fab-item" id="fabItemBtn" onclick="openAddItemModal();">+</button>
         <button class="fab-btn fab-item" id="fabFilterBtn" onclick="toggleFilterToolbar();">🏞️</button>
@@ -1119,7 +1131,7 @@
     <div class="modal-content" style="max-width: 500px; border: 2px solid #ef4444; background: #fff; padding: 25px;">
         <h2 style="color: #ef4444; margin-top:0;">🛑 DANGER: FULL OVERWRITE</h2>
         <p style="color: #475569; font-size: 14px;">This will <b>permanently delete ALL current data</b> (Items, Locations, Categories, Tags) from both your device and the cloud, and replace it with the file data.</p>
-        
+
         <p style="margin-top:20px;">Type <b>CONFIRMIMPORT</b> to unlock the process:</p>
         <input type="text" id="importConfirmText" placeholder="CONFIRMIMPORT" style="width: 100%; text-align: center; font-weight: bold; margin-bottom: 20px; padding: 10px;">
 
@@ -1164,7 +1176,7 @@
             document.getElementById('globalSearchInput').value = '';
             handleGlobalSearch('');
         }
-        
+
         let lastActivePageId = null;
 
         function updateMobileFabs() {
@@ -1176,7 +1188,7 @@
             const fabFilter = document.getElementById("fabFilterBtn");
             const fabContainer = document.getElementById("mobileFabContainer");
             const quickStack = document.getElementById('quickActionsStack');
-            
+
             if (window.innerWidth <= 768 && fabContainer) {
                 fabContainer.style.display = "flex";
                 fabContainer.style.position = "fixed";
@@ -1203,7 +1215,7 @@
                     if (fabFilter) fabFilter.style.display = "flex";
                 } else {
                     if (fabItem) fabItem.style.display = "none";
-                    if (fabLoc) fabLoc.style.display = "none";  
+                    if (fabLoc) fabLoc.style.display = "none";
                     if (fabFilter) fabFilter.style.display = "flex";
                 }
             } else if (fabContainer) {
@@ -1218,23 +1230,35 @@
 async function logoutUser() {
     // 1. Sign out of Supabase
     await window.db.auth.signOut();
-    
+
     // 2. Clear Local Storage (this kills any ghost sessions)
     localStorage.clear();
-    
+
     // 3. Force redirect to login
     window.location.href = 'login.html';
 }
-        
+
+function updateHeaderUser(session) {
+    const user = session?.user;
+    const meta = user?.user_metadata || {};
+    const name = meta.full_name || meta.name || meta.display_name || user?.email?.split("@")[0] || "User";
+    const avatar = meta.avatar_url || meta.picture || meta.avatar || "assets/images/logo.png";
+    const nameEl = document.getElementById("headerUserName");
+    const avatarEl = document.getElementById("headerUserAvatar");
+    if (nameEl) nameEl.textContent = name;
+    if (avatarEl) avatarEl.src = avatar;
+}
+
         async function checkSecurity() {
             const lib = window.supabase || window.Supabase;
             if (!lib) { setTimeout(checkSecurity, 50); return; }
             window.db = lib.createClient(
-                'https://lgchqleltppfdgtpgsbj.supabase.co', 
+                'https://lgchqleltppfdgtpgsbj.supabase.co',
                 'sb_publishable_ZHBBlxQVW0MBUUwQ5Kv1Aw_uufRzvu1'
             );
             const { data: { session } } = await window.db.auth.getSession();
-            if (!session) { window.location.href = 'login.html'; return; } 
+            if (!session) { window.location.href = 'login.html'; return; }
+            updateHeaderUser(session);
             document.body.style.visibility = 'visible';
             initInventory();
             updateMobileFabs();
@@ -1243,6 +1267,6 @@ async function logoutUser() {
         }
         checkSecurity();
     </script>
-    
+
 </body>
 </html>

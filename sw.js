@@ -3,11 +3,15 @@ const CACHE_NAME = 'FieldHub-Inventory-v1';
 // These are the core files the app NEEDS to boot up offline.
 const urlsToCache = [
   './index.html',
+  './manifest.json',
   './assets/css/variables.css',
   './assets/css/admin.css',
   './assets/css/inventory-style.css',
   './assets/js/inventory.js',
   './assets/js/offline-engine.js',
+  './assets/images/android-chrome-192x192.png',
+  './assets/images/android-chrome-512x512.png',
+  './assets/images/logo.png',
   // External libraries we rely on
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://unpkg.com/dexie/dist/dexie.js',
