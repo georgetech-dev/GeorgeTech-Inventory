@@ -313,7 +313,7 @@
         <div id="pageTags" class="inventory-page">
             <div class="items-toolbar">
                 <div class="toolbar-left"><h3>Central Tag Registry</h3></div>
-                <button class="btn-primary" onclick="openTagModal()">+ Add New Tag</button>
+                <button class="btn-primary tag-registry-add-btn" onclick="openTagModal()">+ Add New Tag</button>
             </div>
             <div class="tag-registry-shell">
                 <div id="tagAlphabetRail" class="tag-alphabet-rail"></div>
@@ -1216,6 +1216,7 @@
 
         <button class="fab-btn fab-location" id="fabLocationBtn" onclick="openAddLocationModal()"><div class="icon icon-folder-plus-duotone"></div><span style="position:absolute; top:4px; right:6px; font-size:16px; font-weight:bold;">+</span></button>
         <button class="fab-btn fab-item" id="fabItemBtn" onclick="openAddItemModal();"><div class="icon icon-file-plus-duotone"></div></button>
+        <button class="fab-btn fab-item" id="fabTagBtn" onclick="openTagModal();"><div class="icon icon-tag-duotone"></div></button>
         <button class="fab-btn fab-item" id="fabFilterBtn" onclick="toggleFilterToolbar();"><div class="icon icon-tree-view-duotone"></div></button>
     </div>
 
@@ -1338,6 +1339,7 @@
             const pageId = activePage.id;
             const fabItem = document.getElementById("fabItemBtn");
             const fabLoc = document.getElementById("fabLocationBtn");
+            const fabTag = document.getElementById("fabTagBtn");
             const fabFilter = document.getElementById("fabFilterBtn");
             const fabContainer = document.getElementById("mobileFabContainer");
             const quickStack = document.getElementById('quickActionsStack');
@@ -1361,14 +1363,22 @@
                 if (pageId === "pageItems") {
                     if (fabItem) fabItem.style.display = "flex";
                     if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTag) fabTag.style.display = "none";
                     if (fabFilter) fabFilter.style.display = "flex";
                 } else if (pageId === "pageLocations") {
                     if (fabItem) fabItem.style.display = "none";
                     if (fabLoc) fabLoc.style.display = "flex";
+                    if (fabTag) fabTag.style.display = "none";
+                    if (fabFilter) fabFilter.style.display = "flex";
+                } else if (pageId === "pageTags") {
+                    if (fabItem) fabItem.style.display = "none";
+                    if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTag) fabTag.style.display = "flex";
                     if (fabFilter) fabFilter.style.display = "flex";
                 } else {
                     if (fabItem) fabItem.style.display = "none";
                     if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTag) fabTag.style.display = "none";
                     if (fabFilter) fabFilter.style.display = "flex";
                 }
             } else if (fabContainer) {

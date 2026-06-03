@@ -8,8 +8,6 @@ body {
     background-color: #f8fafc;
     margin: 0;
     min-height: 100dvh;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
 }
 
 #inventoryContainer { 
@@ -442,7 +440,7 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
 
 .tag-alphabet-rail {
     position: sticky;
-    top: calc(12px + env(safe-area-inset-top));
+    top: 12px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -1866,7 +1864,44 @@ body:has(.modal[style*="display:block"]) {
 
 @media (max-width: 768px) {
     #inventoryContainer {
-        padding: calc(8px + env(safe-area-inset-top)) 10px calc(92px + env(safe-area-inset-bottom)) !important;
+        padding: 8px 10px calc(92px + env(safe-area-inset-bottom)) !important;
+    }
+
+    #pageTags .tag-registry-add-btn {
+        display: none !important;
+    }
+
+    .tag-registry-shell {
+        display: block !important;
+        padding-left: 34px;
+        position: relative;
+    }
+
+    .tag-alphabet-rail {
+        position: fixed;
+        left: 6px;
+        top: 154px;
+        bottom: calc(132px + env(safe-area-inset-bottom));
+        width: 26px;
+        max-height: none;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 5px 2px;
+        border-radius: 10px;
+        z-index: 12050;
+        scrollbar-width: none;
+    }
+
+    .tag-alphabet-rail::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tag-alphabet-rail button {
+        width: 22px;
+        min-height: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        font-size: 10px;
     }
 
     .inventory-app-header {
