@@ -3848,6 +3848,19 @@ function setupTagSearchInput(mode) {
     input.autocomplete = "off";
     const list = document.createElement("div");
     list.className = "tag-search-options";
+    const listHeader = document.createElement("div");
+    listHeader.className = "tag-search-options-header";
+    listHeader.innerHTML = `<span>Select tags</span><button type="button" aria-label="Close tag picker">&times;</button>`;
+    const listGrid = document.createElement("div");
+    listGrid.className = "tag-search-options-grid";
+    list.append(listHeader, listGrid);
+
+    const closeList = () => {
+        list.classList.remove("open");
+        list.style.display = "none";
+    };
+
+    listHeader.querySelector("button").onclick = closeList;
 
     const renderOptions = () => {
         const selected = mode === "add" ? activeSelectedAddTags : activeSelectedEditTags;
@@ -3855,7 +3868,7 @@ function setupTagSearchInput(mode) {
         const matches = globalCachedTags
             .map(tag => tag.name)
             .filter(name => !selected.includes(name) && (!term || name.toLowerCase().includes(term)));
-        list.innerHTML = "";
+        listGrid.innerHTML = "";
         matches.forEach(name => {
             const option = document.createElement("button");
             option.type = "button";
@@ -3866,14 +3879,30 @@ function setupTagSearchInput(mode) {
                 renderOptions();
                 input.focus();
             };
-            list.appendChild(option);
+            listGrid.appendChild(option);
         });
-        list.style.display = matches.length ? "block" : "none";
+        if (!matches.length) {
+            const empty = document.createElement("div");
+            empty.className = "tag-search-empty";
+            empty.textContent = "No tags found";
+            listGrid.appendChild(empty);
+        }
+        const rect = input.getBoundingClientRect();
+        const modalRect = input.closest(".modal-content")?.getBoundingClientRect();
+        const targetWidth = modalRect?.width || rect.width;
+        list.style.left = "50%";
+        list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
+        list.style.top = `${Math.max(12, rect.top - 12)}px`;
+        list.style.transform = "translate(-50%, -100%)";
+        list.style.display = "block";
+        list.classList.add("open");
     };
 
     input.addEventListener("focus", renderOptions);
     input.addEventListener("input", renderOptions);
-    input.addEventListener("blur", () => setTimeout(() => { list.style.display = "none"; }, 160));
+    document.addEventListener("pointerdown", event => {
+        if (!wrapper.contains(event.target) && !list.contains(event.target)) closeList();
+    });
     wrapper.append(input, list);
     select.parentElement.insertBefore(wrapper, select);
 }
@@ -3903,10 +3932,53 @@ async function loadTagsAdmin() {
     const data = await localDB.tags.orderBy('name').toArray();
     const tbody = document.getElementById("centralTagsTableBody"); tbody.innerHTML = "";
     if(!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#999; font-style:italic; padding:20px;">No tags in registry</td></tr>`; return; }
+    const rail = document.getElementById("tagAlphabetRail");
+    if (rail) rail.innerHTML = "";
+    const availableLetters = new Set(data.map(t => (t.name || "#").trim().charAt(0).toUpperCase()).map(ch => /[A-Z]/.test(ch) ? ch : "#"));
+    const letters = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+    if (rail) {
+        letters.forEach(letter => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = letter;
+            btn.disabled = !availableLetters.has(letter);
+            btn.dataset.letter = letter;
+            rail.appendChild(btn);
+        });
+        setupTagAlphabetRail(rail);
+    }
+    let lastLetter = "";
     data.forEach(t => {
+        const letter = /^[A-Z]/.test((t.name || "").trim().charAt(0).toUpperCase()) ? (t.name || "").trim().charAt(0).toUpperCase() : "#";
+        if (letter !== lastLetter) {
+            const section = document.createElement("tr");
+            section.className = "tag-section-row";
+            section.id = `tag-section-${letter}`;
+            section.innerHTML = `<td colspan="2">${letter}</td>`;
+            tbody.appendChild(section);
+            lastLetter = letter;
+        }
         const tr = document.createElement("tr");
         tr.innerHTML = `<td style="font-weight:600; color:#333;">${t.name}</td><td style="text-align:right; padding-right:15px;"><button class="btn-outline" style="padding:4px 10px; font-size:12px; margin-right:6px;" onclick="openTagModal(false, '${t.id}', '${t.name}')">Edit</button><button class="btn-danger" style="padding:4px 10px; font-size:12px;" onclick="deleteCentralTag('${t.id}')">Delete</button></td>`; 
         tbody.appendChild(tr);
+    });
+}
+
+function setupTagAlphabetRail(rail) {
+    if (rail.dataset.ready === "true") return;
+    rail.dataset.ready = "true";
+    const jumpFromPoint = (clientY) => {
+        const target = document.elementFromPoint(rail.getBoundingClientRect().left + rail.offsetWidth / 2, clientY);
+        const button = target?.closest?.("#tagAlphabetRail button:not(:disabled)");
+        if (!button) return;
+        document.getElementById(`tag-section-${button.dataset.letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    rail.addEventListener("pointerdown", event => {
+        rail.setPointerCapture?.(event.pointerId);
+        jumpFromPoint(event.clientY);
+    });
+    rail.addEventListener("pointermove", event => {
+        if (event.buttons) jumpFromPoint(event.clientY);
     });
 }
 
