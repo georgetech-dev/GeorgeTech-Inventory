@@ -97,6 +97,14 @@ function findItemByScanToken(items, token) {
     return (items || []).find(item => itemMatchesHardwareToken(item, token));
 }
 
+function findTempLocationByScanToken(token) {
+    const clean = normaliseToken(token);
+    if (!clean) return null;
+    return (tempLocationsAdmin || []).find(temp =>
+        normaliseToken(temp.barcode) === clean || normaliseToken(temp.nfc_tag) === clean
+    );
+}
+
 function resetSearchControlsAfterScan() {
     const typeFilter = document.getElementById("searchTypeFilter");
     const searchInput = document.getElementById("globalSearchInput");
@@ -136,8 +144,20 @@ async function routeGlobalHardwareScan(scannedToken) {
         return;
     }
 
+    if ((!tempLocationsAdmin || tempLocationsAdmin.length === 0) && typeof localDB !== "undefined" && localDB?.temp_locations) {
+        tempLocationsAdmin = await localDB.temp_locations.toArray();
+    }
+    const tempLocationMatch = findTempLocationByScanToken(cleanToken);
+    if (tempLocationMatch) {
+        resetSearchControlsAfterScan();
+        showPage("pageTempLocations");
+        await loadTempLocationsAdmin();
+        loadTempLocationDetails(tempLocationMatch.id);
+        return;
+    }
+
     resetSearchControlsAfterScan();
-    await customAlert("No item or location found matching that barcode/NFC tag.", "Scan Not Found");
+    await customAlert("Unable to find NFC tag or matching barcode.", "Scan Not Found");
 }
 
 function getNfcTextFromEvent(event) {
@@ -323,7 +343,7 @@ function makeScanPair(barcodeTarget, nfcTarget) {
     nfcBtn.type = "button";
     nfcBtn.className = "btn-outline item-form-hardware-action w-100";
     nfcBtn.textContent = "NFC Ready (Tap)";
-    nfcBtn.onclick = () => openNfcScannerModal(nfcTarget);
+    nfcBtn.onclick = () => handleNfcButtonPress(nfcTarget);
     wrap.append(barcodeBtn, nfcBtn);
     return { wrap, barcodeBtn, nfcBtn };
 }
@@ -2458,12 +2478,13 @@ async function triggerAddItemBarcodeScan() {
 async function triggerAddItemNfcScan() {
     const input = document.getElementById("addItemNFC");
     if (input?.value?.trim()) {
-        const rewrite = await customConfirm("An NFC tag is already mapped to this new item. Do you want to replace it?", "Manage NFC Tag");
+        const rewrite = await customConfirm("An NFC tag is already mapped to this new item. Do you want to remove it?", "Remove NFC Tag?");
         if (!rewrite) return;
         input.value = "";
         updateAddItemHardwareButtonsUI();
+        return;
     }
-    openNfcScannerModal("addItemNFC");
+    await customAlert("Tap an NFC tag now. It will be added to this item automatically.", "NFC Ready");
 }
 
 async function addItem(addAnother = false) {
@@ -3195,34 +3216,6 @@ if (typeof openBarcodeScannerModal === "function") {
             return;
         }
         return baseScannerLauncher(targetId);
-    };
-}
-
-// Hook peripheral readings straight into variables
-if (typeof openNfcScannerModal === "function") {
-    const baseNfcLauncher = openNfcScannerModal;
-    openNfcScannerModal = function(targetId) {
-        if (document.getElementById("itemEditModal").style.display === "flex" && !targetId) {
-            if (editModalActiveNfcTagString.trim() !== "") {
-                triggerEditModalNfcClearanceRequest(); return;
-            }
-            window.activeNfcTargetInputId = "EDIT_MODAL_NFC_INTERNAL_TUNNEL";
-            document.getElementById("nfcScannerModal").style.display = "flex";
-            isProcessingNfcScan = false;
-            try {
-                const ndef = new NDEFReader(); nfcAbortController = new AbortController();
-                ndef.scan({ signal: nfcAbortController.signal }).then(() => {
-                    ndef.onreading = (event) => {
-                        if (isProcessingNfcScan) return; isProcessingNfcScan = true;
-                        editModalActiveNfcTagString = event.serialNumber;
-                        updateEditModalHardwareButtonsUI();
-                        closeNfcScannerModal();
-                    };
-                }).catch(() => closeNfcScannerModal());
-            } catch(e) { closeNfcScannerModal(); }
-            return;
-        }
-        return baseNfcLauncher(targetId);
     };
 }
 
@@ -4319,7 +4312,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
     container.style.display = "block";
     container.style.height = "260px"; 
     
-    // 2. DYNAMIC UI INJECTION (NFC Banner & Live Zoom Slider)
+    // 2. DYNAMIC UI INJECTION (Live Zoom Slider)
     let uiWrapper = document.getElementById("unifiedScannerUI");
     if (!uiWrapper) {
         uiWrapper = document.createElement("div");
@@ -4347,9 +4340,11 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
         </div>
     `;
 
-    // 3. START NFC BACKGROUND ENGINE
+    document.getElementById("nfcStatusDisplay")?.remove();
+
+    // 3. NFC is passive and native-driven; the barcode modal is camera-only.
     const nfcStatusDiv = document.getElementById("nfcStatusDisplay");
-    if ("NDEFReader" in window && window.isSecureContext) {
+    if (nfcStatusDiv && false && "NDEFReader" in window && window.isSecureContext) {
         nfcStatusDiv.innerHTML = "NFC Ready";
         nfcStatusDiv.style.color = "#15803d";
         nfcStatusDiv.style.background = "#dcfce7";
@@ -4369,7 +4364,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
             nfcStatusDiv.style.background = "#fee2e2";
             nfcStatusDiv.style.borderColor = "#fecaca";
         }
-    } else {
+    } else if (nfcStatusDiv) {
         nfcStatusDiv.innerHTML = "⚠️ NFC Unavailable";
         nfcStatusDiv.style.color = "#9a3412";
         nfcStatusDiv.style.background = "#ffedd5";
@@ -4518,6 +4513,67 @@ function inferNfcTargetFromOpenModal(currentTargetId = null) {
     return null;
 }
 
+function setPassiveNfcTargetValue(targetInputId, token) {
+    const cleanToken = String(token || "").trim();
+    if (!cleanToken || !targetInputId) return false;
+
+    if (targetInputId === "EDIT_MODAL_NFC_INTERNAL_TUNNEL") {
+        editModalActiveNfcTagString = cleanToken;
+        updateEditModalHardwareButtonsUI();
+        return true;
+    }
+
+    const resolvedTargetId = resolveHardwareTargetInputId(targetInputId, true);
+    const targetEl = document.getElementById(resolvedTargetId);
+    if (!targetEl) return false;
+
+    targetEl.value = cleanToken;
+    targetEl.dispatchEvent(new Event("input", { bubbles: true }));
+    targetEl.dispatchEvent(new Event("change", { bubbles: true }));
+
+    if (resolvedTargetId === "addItemNFC") updateAddItemHardwareButtonsUI();
+    document.querySelectorAll(".modal-content").forEach(content => content._syncScanPair?.());
+    return true;
+}
+
+async function handlePassiveNfcTag(token) {
+    const cleanToken = String(token || "").trim();
+    if (!cleanToken) return;
+
+    const targetInputId = inferNfcTargetFromOpenModal();
+    if (targetInputId && setPassiveNfcTargetValue(targetInputId, cleanToken)) {
+        setNfcDiagnosticsMessage(`NFC tag assigned: ${cleanToken}`, "ok");
+        if (typeof window.setStatus === "function") window.setStatus("connected", "NFC tag assigned");
+        return;
+    }
+
+    await routeGlobalHardwareScan(cleanToken);
+}
+
+window.handleNfcButtonPress = async function(targetInputId) {
+    const resolvedTargetId = resolveHardwareTargetInputId(targetInputId, true);
+
+    if (resolvedTargetId === "EDIT_MODAL_NFC_INTERNAL_TUNNEL") {
+        await triggerEditModalNfcClearanceRequest();
+        return;
+    }
+
+    const input = document.getElementById(resolvedTargetId);
+    const currentValue = input?.value?.trim() || "";
+    if (currentValue) {
+        const confirmClear = await customConfirm("Remove this NFC tag from the current record?", "Remove NFC Tag?");
+        if (!confirmClear) return;
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        if (resolvedTargetId === "addItemNFC") updateAddItemHardwareButtonsUI();
+        document.querySelectorAll(".modal-content").forEach(content => content._syncScanPair?.());
+        return;
+    }
+
+    await customAlert("Tap an NFC tag now. It will be added automatically while this modal is open.", "NFC Ready");
+};
+
 if (!window.fieldHubNativeNfcListenerInstalled) {
     window.fieldHubNativeNfcListenerInstalled = true;
     window.addEventListener("fieldhub-native-nfc", event => {
@@ -4537,23 +4593,10 @@ if (!window.fieldHubNativeNfcListenerInstalled) {
         lastNativeNfcToken = token;
         lastNativeNfcAt = now;
 
-        const scannerOpen = document.getElementById("barcodeScannerModal")?.style.display === "flex";
-        const activeTarget = scannerOpen
-            ? (window.activeBarcodeTargetInputId || window.currentBarcodeTargetField || window.activeNfcTargetInputId || null)
-            : null;
-
-        if (scannerOpen) {
-            window.setTimeout(() => {
-                if (isProcessingUnifiedScan) return;
-                isProcessingUnifiedScan = true;
-                window.executeUnifiedScannerRouting(token, activeTarget, "nfc");
-            }, 80);
-            return;
-        }
-
-        if (isProcessingUnifiedScan) return;
-        isProcessingUnifiedScan = true;
-        window.executeUnifiedScannerRouting(token, null, "nfc");
+        handlePassiveNfcTag(token).catch(err => {
+            console.error("Passive NFC routing failed:", err);
+            customAlert("NFC tag was read, but the app could not route it.", "NFC Error");
+        });
     });
 }
 
@@ -4671,10 +4714,10 @@ window.cancelBarcodeScannerModal = function() {
 };
 
 // Dummy close function for legacy NFC buttons that haven't been deleted yet
-window.closeNfcScannerModal = function() { closeBarcodeScannerModal(); };
+window.closeNfcScannerModal = function() { closeModal("nfcScannerModal"); };
 window.openNfcScannerModal = function(target) {
     window.activeNfcTargetInputId = target;
-    openBarcodeScannerModal(target);
+    handleNfcButtonPress(target);
 };
 
 
@@ -5740,7 +5783,7 @@ window.triggerEditModalNfcClearanceRequest = async function() {
             updateEditModalHardwareButtonsUI();
         }
     } else {
-        window.openNfcScannerModal('EDIT_MODAL_NFC_INTERNAL_TUNNEL');
+        await customAlert("Tap an NFC tag now. It will be added to this item automatically.", "NFC Ready");
     }
 };
 
