@@ -4289,6 +4289,8 @@ async function saveQuantityAdjustment(closeAfter) {
 let unifiedNfcAbortController = null;
 let html5QrcodeScannerInstance = null;
 let isProcessingUnifiedScan = false;
+let lastNativeNfcToken = "";
+let lastNativeNfcAt = 0;
 
 window.openBarcodeScannerModal = async function(targetInputId = null) {
     // 1. Clean up any previous instances
@@ -4357,7 +4359,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
             ndef.onreading = (event) => {
                 if (isProcessingUnifiedScan) return; 
                 isProcessingUnifiedScan = true;
-                executeUnifiedScannerRouting(getNfcTextFromEvent(event), targetInputId);
+                executeUnifiedScannerRouting(getNfcTextFromEvent(event), targetInputId, "nfc");
             };
         } catch (err) {
             nfcStatusDiv.innerHTML = "⚠️ NFC Error";
@@ -4384,7 +4386,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
         (decodedText) => {
             if (isProcessingUnifiedScan) return; 
             isProcessingUnifiedScan = true; 
-            executeUnifiedScannerRouting(decodedText.trim(), targetInputId);
+            executeUnifiedScannerRouting(decodedText.trim(), targetInputId, "barcode");
         }, 
         () => {}
     ).then(() => {
@@ -4418,10 +4420,11 @@ window.applyDynamicZoom = function(val) {
 };
 
 // --- THE MASTER ROUTER (Handles both Barcode & NFC perfectly) ---
-window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId) {
+window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId, scanSource = "unknown") {
     const cleanToken = scannedToken.trim();
     const lowerToken = cleanToken.toLowerCase();
     closeBarcodeScannerModal();
+    const isNfcScan = scanSource === "nfc";
 
     console.log("🚨 UNIFIED ROUTER TRIGGERED! Target ID is:", targetInputId, "| Scanned Code:", cleanToken);
 
@@ -4433,7 +4436,7 @@ window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId
 
     } else if (targetInputId === 'EDIT_MODAL_BARCODE_INTERNAL_TUNNEL' || targetInputId === 'EDIT_MODAL_NFC_INTERNAL_TUNNEL') {
         // Smart Routing: If it has colons, it's an NFC tag. Otherwise, Barcode.
-        if (cleanToken.includes(':')) {
+        if (targetInputId === 'EDIT_MODAL_NFC_INTERNAL_TUNNEL' || isNfcScan) {
             editModalActiveNfcTagString = cleanToken;
         } else {
             editModalActiveBarcodeString = cleanToken;
@@ -4441,7 +4444,7 @@ window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId
         updateEditModalHardwareButtonsUI();
 
     } else if (targetInputId === 'addItemHardwareTunnel') {
-        if (cleanToken.includes(':')) {
+        if (isNfcScan) {
             document.getElementById("addItemNFC").value = cleanToken;
         } else {
             document.getElementById("addItemBarcode").value = cleanToken;
@@ -4467,19 +4470,53 @@ window.executeUnifiedScannerRouting = async function(scannedToken, targetInputId
         else { customAlert("No location folder found matching that tag.", "Not Found"); }
 
     } else if (targetInputId) {
+        const resolvedTargetId = resolveHardwareTargetInputId(targetInputId, isNfcScan);
         // Fallback for raw input fields
-        const targetEl = document.getElementById(targetInputId);
+        const targetEl = document.getElementById(resolvedTargetId);
         if (targetEl) targetEl.value = cleanToken;
 
-        if (targetInputId === 'addItemBarcode' || targetInputId === 'addItemNFC') updateAddItemHardwareButtonsUI();
+        if (resolvedTargetId === 'addItemBarcode' || resolvedTargetId === 'addItemNFC') updateAddItemHardwareButtonsUI();
         document.querySelectorAll(".modal-content").forEach(content => content._syncScanPair?.());
-        if (targetInputId === 'moveItemLocationBarcode') handleLocationBarcodeLookup(cleanToken);
-        if (targetInputId === 'assignItemBarcode') handleAssignBarcodeLookup(cleanToken);
+        if (resolvedTargetId === 'moveItemLocationBarcode') handleLocationBarcodeLookup(cleanToken);
+        if (resolvedTargetId === 'assignItemBarcode') handleAssignBarcodeLookup(cleanToken);
 
     } else { 
         await routeGlobalHardwareScan(cleanToken);
     }
 };
+
+function resolveHardwareTargetInputId(targetInputId, isNfcScan) {
+    if (!isNfcScan) return targetInputId;
+    const nfcTargetMap = {
+        addItemBarcode: "addItemNFC",
+        editItemBarcode: "editItemNFC",
+        addLocationBarcode: "addLocationNFC",
+        editLocationBarcode: "editLocationNFC",
+        addTempLocationBarcode: "addTempLocationNFC",
+        editTempLocationBarcode: "editTempLocationNFC"
+    };
+    const preferred = nfcTargetMap[targetInputId];
+    return preferred && document.getElementById(preferred) ? preferred : targetInputId;
+}
+
+if (!window.fieldHubNativeNfcListenerInstalled) {
+    window.fieldHubNativeNfcListenerInstalled = true;
+    window.addEventListener("fieldhub-native-nfc", event => {
+        const token = String(event.detail || "").trim();
+        if (!token) return;
+        const now = Date.now();
+        if (token === lastNativeNfcToken && now - lastNativeNfcAt < 1200) return;
+        lastNativeNfcToken = token;
+        lastNativeNfcAt = now;
+
+        if (isProcessingUnifiedScan) return;
+        isProcessingUnifiedScan = true;
+
+        const scannerOpen = document.getElementById("barcodeScannerModal")?.style.display === "flex";
+        const activeTarget = scannerOpen ? window.activeBarcodeTargetInputId : null;
+        window.executeUnifiedScannerRouting(token, activeTarget, "nfc");
+    });
+}
 
 function closeBarcodeScannerModal() { 
     document.getElementById("barcodeScannerModal").style.display = "none"; 
