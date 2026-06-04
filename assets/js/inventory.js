@@ -1292,7 +1292,6 @@ function showPage(pageId) {
         fabContainer.style.position = "fixed";
         fabContainer.style.left = "16px";
         fabContainer.style.right = "auto";
-        fabContainer.style.bottom = "calc(16px + max(env(safe-area-inset-bottom), 72px))";
         fabContainer.style.top = "auto";
         fabContainer.style.transform = "none";
         fabContainer.style.zIndex = "13000";

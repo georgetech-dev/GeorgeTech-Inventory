@@ -960,7 +960,7 @@ body:has(.modal[style*="display:block"]) {
     .modal div[style*="display: flex; gap: 8px; align-items: flex-end;"] > button, .modal div[style*="display: flex; gap: 10px; align-items: flex-end;"] > button { flex: 1; }
 
     /* Floating Action Buttons */
-    .fab-container { display: flex; position: fixed; bottom: 30px; right: 20px; gap: 15px; z-index: 1000; align-items: center; transition: opacity 0.8s ease-in-out !important; background:#065f46; padding: 10px 14px; border-radius: 30px; }
+    .fab-container { display: flex; position: fixed; bottom: 0px; right: 20px; gap: 15px; z-index: 1000; align-items: center; transition: opacity 0.8s ease-in-out !important; background:#065f46; padding: 10px 14px; border-radius: 30px; }
     .fab-btn { display: flex; width: 54px; height: 54px; border-radius: 50%; color: white; font-size: 28px; font-weight: 300; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; align-items: center; justify-content: center; transition: transform 0.2s; position: relative; }
     .fab-item { background: #ff8c00; }
     .fab-location { background: #004a99; font-size: 22px; }
