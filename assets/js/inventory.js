@@ -3872,6 +3872,7 @@ function setupTagSearchInput(mode) {
     input.autocomplete = "off";
     const list = document.createElement("div");
     list.className = "tag-search-options";
+    list.style.display = "none";
     restoreFloatingPanelState(list);
     const listHeader = document.createElement("div");
     listHeader.className = "tag-search-options-header";
@@ -3936,7 +3937,8 @@ function setupTagSearchInput(mode) {
         list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
         list.style.transform = "translateX(-50%)";
         if (list.dataset.saved !== "true") {
-            list.style.top = `${Math.max(12, Math.min(viewportTop + 72, viewportTop + viewportHeight - 360))}px`;
+            const bounds = getFloatingPanelBounds(list);
+            list.style.top = `${Math.max(bounds.minTop, Math.min(bounds.maxTop, viewportTop + 72))}px`;
         }
         list.style.display = "block";
         list.classList.add("open");
@@ -4000,7 +4002,8 @@ function setupFloatingPanelDrag(panel, handle) {
         if (!dragActive) {
             return;
         }
-        const nextTop = Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, dragBaseTop + event.clientY - dragBaseY));
+        const bounds = getFloatingPanelBounds(panel);
+        const nextTop = Math.max(bounds.minTop, Math.min(bounds.maxTop, dragBaseTop + event.clientY - dragBaseY));
         panel.style.top = `${nextTop}px`;
         panel.dataset.saved = "true";
         event.preventDefault();
@@ -4025,12 +4028,13 @@ function setupFloatingPanelDrag(panel, handle) {
 function restoreFloatingPanelState(panel) {
     try {
         const saved = JSON.parse(localStorage.getItem("fieldhubTagPickerLayout") || "{}");
+        const bounds = getFloatingPanelBounds(panel);
         if (Number.isFinite(saved.top)) {
-            panel.style.top = `${Math.max(8, Math.min(window.innerHeight - 120, saved.top))}px`;
+            panel.style.top = `${Math.max(bounds.minTop, Math.min(bounds.maxTop, saved.top))}px`;
             panel.dataset.saved = "true";
         }
         if (Number.isFinite(saved.height)) {
-            panel.style.height = `${Math.max(190, Math.min(window.innerHeight - 24, saved.height))}px`;
+            panel.style.height = `${Math.max(190, Math.min(bounds.maxHeight, saved.height))}px`;
             panel.dataset.saved = "true";
         }
     } catch {}
@@ -4039,10 +4043,24 @@ function restoreFloatingPanelState(panel) {
 function saveFloatingPanelState(panel) {
     if (!panel) return;
     const rect = panel.getBoundingClientRect();
+    const bounds = getFloatingPanelBounds(panel);
     localStorage.setItem("fieldhubTagPickerLayout", JSON.stringify({
-        top: Math.round(rect.top),
-        height: Math.round(rect.height)
+        top: Math.round(Math.max(bounds.minTop, Math.min(bounds.maxTop, rect.top))),
+        height: Math.round(Math.max(190, Math.min(bounds.maxHeight, rect.height)))
     }));
+}
+
+function getFloatingPanelBounds(panel) {
+    const nav = document.querySelector(".inventory-nav-bar");
+    const navBottom = nav?.getBoundingClientRect?.().bottom || 0;
+    const viewport = window.visualViewport;
+    const viewportTop = viewport?.offsetTop || 0;
+    const viewportHeight = viewport?.height || window.innerHeight;
+    const minTop = Math.max(12, viewportTop + navBottom + 10);
+    const height = panel?.offsetHeight || 190;
+    const maxTop = Math.max(minTop, viewportTop + viewportHeight - height - 8);
+    const maxHeight = Math.max(190, viewportHeight - minTop - 8);
+    return { minTop, maxTop, maxHeight };
 }
 
 function handleTagSelection(mode, tagName) {

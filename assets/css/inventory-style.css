@@ -710,6 +710,7 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
 }
 
 .tag-search-options {
+    display: none;
     position: fixed;
     z-index: 20050;
     max-height: min(44vh, 320px);
@@ -721,7 +722,7 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     padding: 10px;
     resize: both;
     min-width: 280px;
-    min-height: 190px;
+    min-height: 300px;
 }
 
 .tag-search-options.drag-armed,
@@ -1498,7 +1499,7 @@ body:has(.modal[style*="display:block"]) {
     border-radius: 16px !important;
     text-align: left !important;
     box-sizing: border-box !important;
-    max-height: 85vh !important;
+    max-height: 80vh !important;
     overflow-y: auto !important;
 }
 
