@@ -75,7 +75,7 @@
                 position: fixed !important;
                 left: 16px !important;
                 right: auto !important;
-                bottom: calc(16px + max(env(safe-area-inset-bottom), 72px)) !important;
+                bottom: calc(10px + env(safe-area-inset-bottom)) !important;
                 top: auto !important;
                 transform: none !important;
                 gap: 12px;
@@ -179,7 +179,7 @@
 
     <div class="container-fluid" id="inventoryContainer">
 
-        <div class="inventory-app-header">
+        <div class="inventory-app-header" aria-hidden="true">
             <div class="app-branding">
                 <a class="app-logo-link" href="https://fieldhub.uk/appscreen.html" title="FieldHub">
                     <img class="app-logo-img" src="assets/images/logo.png" alt="FieldHub">
@@ -286,7 +286,7 @@
                     <h3>Temporary Assignments Pool</h3>
                     <p style="font-size: 13px; color: #666; margin: 0;">Manage Vans, Engineers, or Jobsites</p>
                 </div>
-                <button class="btn-primary" onclick="openAddTempLocationModal()" style="background: #10b981; border-color: #10b981;">+ Add Temp Location</button>
+                <button class="btn-primary temp-location-add-btn" onclick="openAddTempLocationModal()" style="background: #10b981; border-color: #10b981;">+ Add Temp Location</button>
             </div>
 
             <div class="location-nav">
@@ -329,7 +329,7 @@
         <div id="pageCategories" class="inventory-page">
             <div class="items-toolbar">
                 <div class="toolbar-left"><h3>Central Category Registry</h3></div>
-                <button class="btn-primary" onclick="openCategoryModal()">+ Add New Category</button>
+                <button class="btn-primary category-registry-add-btn" onclick="openCategoryModal()">+ Add New Category</button>
             </div>
             <div class="items-table-wrapper" style="display: block;">
                 <table class="custom-table" id="centralCategoriesTable">
@@ -1177,7 +1177,10 @@
     </div>
         <footer class="inventory-footer">
             <div class="inventory-footer-brand">
-                <img src="assets/images/logo.png" alt="FieldHub">
+                <div class="inventory-footer-product">
+                    <span>Inventory</span>
+                    <img src="assets/images/logo.png" alt="FieldHub">
+                </div>
                 <span>FieldHub &copy; 2026</span>
             </div>
             <div class="inventory-footer-support">
@@ -1185,6 +1188,7 @@
                 <span>visit: <a href="https://fieldhub.uk/support">FieldHub.uk/support</a></span>
                 <span>or email: <a href="mailto:support@FieldHub.uk">support@FieldHub.uk</a></span>
             </div>
+            <div class="inventory-footer-user">Logged in as: <span id="footerUserName">User</span></div>
             <button class="footer-logout-btn" onclick="logoutUser()">Log out</button>
         </footer>
     </div>
@@ -1215,8 +1219,10 @@
         </div>
 
         <button class="fab-btn fab-location" id="fabLocationBtn" onclick="openAddLocationModal()"><div class="icon icon-folder-plus-duotone"></div><span style="position:absolute; top:4px; right:6px; font-size:16px; font-weight:bold;">+</span></button>
+        <button class="fab-btn fab-location" id="fabTempLocationBtn" onclick="openAddTempLocationModal()"><div class="icon icon-user-circle-check-duotone"></div><span style="position:absolute; top:4px; right:6px; font-size:16px; font-weight:bold;">+</span></button>
         <button class="fab-btn fab-item" id="fabItemBtn" onclick="openAddItemModal();"><div class="icon icon-file-plus-duotone"></div></button>
         <button class="fab-btn fab-item" id="fabTagBtn" onclick="openTagModal();"><div class="icon icon-tag-duotone"></div></button>
+        <button class="fab-btn fab-item" id="fabCategoryBtn" onclick="openCategoryModal();"><div class="icon icon-tag-chevron-duotone"></div></button>
         <button class="fab-btn fab-item" id="fabFilterBtn" onclick="toggleFilterToolbar();"><div class="icon icon-tree-view-duotone"></div></button>
     </div>
 
@@ -1339,23 +1345,15 @@
             const pageId = activePage.id;
             const fabItem = document.getElementById("fabItemBtn");
             const fabLoc = document.getElementById("fabLocationBtn");
+            const fabTempLoc = document.getElementById("fabTempLocationBtn");
             const fabTag = document.getElementById("fabTagBtn");
+            const fabCategory = document.getElementById("fabCategoryBtn");
             const fabFilter = document.getElementById("fabFilterBtn");
             const fabContainer = document.getElementById("mobileFabContainer");
             const quickStack = document.getElementById('quickActionsStack');
 
             if (window.innerWidth <= 768 && fabContainer) {
                 fabContainer.style.display = "flex";
-                fabContainer.style.position = "fixed";
-                fabContainer.style.left = "16px";
-                fabContainer.style.right = "auto";
-                fabContainer.style.bottom = "calc(16px + max(env(safe-area-inset-bottom), 72px))";
-                fabContainer.style.top = "auto";
-                fabContainer.style.transform = "none";
-                fabContainer.style.zIndex = "13000";
-                fabContainer.style.visibility = "visible";
-                fabContainer.style.opacity = "1";
-                fabContainer.style.pointerEvents = "auto";
                 if (lastActivePageId !== pageId) {
                     if (quickStack) quickStack.classList.remove('open');
                     lastActivePageId = pageId;
@@ -1363,22 +1361,44 @@
                 if (pageId === "pageItems") {
                     if (fabItem) fabItem.style.display = "flex";
                     if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTempLoc) fabTempLoc.style.display = "none";
                     if (fabTag) fabTag.style.display = "none";
+                    if (fabCategory) fabCategory.style.display = "none";
                     if (fabFilter) fabFilter.style.display = "flex";
                 } else if (pageId === "pageLocations") {
                     if (fabItem) fabItem.style.display = "none";
                     if (fabLoc) fabLoc.style.display = "flex";
+                    if (fabTempLoc) fabTempLoc.style.display = "none";
                     if (fabTag) fabTag.style.display = "none";
+                    if (fabCategory) fabCategory.style.display = "none";
+                    if (fabFilter) fabFilter.style.display = "flex";
+                } else if (pageId === "pageTempLocations") {
+                    if (fabItem) fabItem.style.display = "none";
+                    if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTempLoc) fabTempLoc.style.display = "flex";
+                    if (fabTag) fabTag.style.display = "none";
+                    if (fabCategory) fabCategory.style.display = "none";
                     if (fabFilter) fabFilter.style.display = "flex";
                 } else if (pageId === "pageTags") {
                     if (fabItem) fabItem.style.display = "none";
                     if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTempLoc) fabTempLoc.style.display = "none";
                     if (fabTag) fabTag.style.display = "flex";
+                    if (fabCategory) fabCategory.style.display = "none";
+                    if (fabFilter) fabFilter.style.display = "flex";
+                } else if (pageId === "pageCategories") {
+                    if (fabItem) fabItem.style.display = "none";
+                    if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTempLoc) fabTempLoc.style.display = "none";
+                    if (fabTag) fabTag.style.display = "none";
+                    if (fabCategory) fabCategory.style.display = "flex";
                     if (fabFilter) fabFilter.style.display = "flex";
                 } else {
                     if (fabItem) fabItem.style.display = "none";
                     if (fabLoc) fabLoc.style.display = "none";
+                    if (fabTempLoc) fabTempLoc.style.display = "none";
                     if (fabTag) fabTag.style.display = "none";
+                    if (fabCategory) fabCategory.style.display = "none";
                     if (fabFilter) fabFilter.style.display = "flex";
                 }
             } else if (fabContainer) {
@@ -1404,14 +1424,24 @@ async function logoutUser() {
     window.location.href = 'login.html';
 }
 
-function updateHeaderUser(session) {
+async function updateHeaderUser(session) {
     const user = session?.user;
     const meta = user?.user_metadata || {};
-    const name = meta.full_name || meta.name || meta.display_name || user?.email?.split("@")[0] || "User";
+    let name = meta.full_name || meta.name || meta.display_name || user?.email?.split("@")[0] || "User";
+    if (user?.id && window.db) {
+        const { data: profile } = await window.db
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+        if (profile?.full_name) name = profile.full_name;
+    }
     const avatar = meta.avatar_url || meta.picture || meta.avatar || "assets/images/logo.png";
     const nameEl = document.getElementById("headerUserName");
+    const footerNameEl = document.getElementById("footerUserName");
     const avatarEl = document.getElementById("headerUserAvatar");
     if (nameEl) nameEl.textContent = name;
+    if (footerNameEl) footerNameEl.textContent = name;
     if (avatarEl) avatarEl.src = avatar;
 }
 
@@ -1424,7 +1454,7 @@ function updateHeaderUser(session) {
             );
             const { data: { session } } = await window.db.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
-            updateHeaderUser(session);
+            await updateHeaderUser(session);
             document.body.style.visibility = 'visible';
             initInventory();
             updateMobileFabs();

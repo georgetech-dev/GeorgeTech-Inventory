@@ -1282,42 +1282,57 @@ function showPage(pageId) {
     // Control Mobile FAB visibility
     const fabItem = document.getElementById("fabItemBtn"); 
     const fabLoc = document.getElementById("fabLocationBtn");
+    const fabTempLoc = document.getElementById("fabTempLocationBtn");
     const fabTag = document.getElementById("fabTagBtn");
+    const fabCategory = document.getElementById("fabCategoryBtn");
     const fabFilter = document.getElementById("fabFilterBtn");
     const fabContainer = document.getElementById("mobileFabContainer");
     
     if (window.innerWidth <= 768 && fabContainer) {
         // Keep container active so the ⚡ quick actions button stays operational across tabs
         fabContainer.style.display = "flex";
-        fabContainer.style.position = "fixed";
-        fabContainer.style.left = "16px";
-        fabContainer.style.right = "auto";
-        fabContainer.style.top = "auto";
-        fabContainer.style.transform = "none";
-        fabContainer.style.zIndex = "13000";
-        fabContainer.style.visibility = "visible";
-        fabContainer.style.opacity = "1";
-        fabContainer.style.pointerEvents = "auto";
         
         if (pageId === "pageItems") {
             if (fabItem) fabItem.style.display = "flex";
             if (fabLoc) fabLoc.style.display = "none";  // Hidden on Items Browser
+            if (fabTempLoc) fabTempLoc.style.display = "none";
             if (fabTag) fabTag.style.display = "none";
+            if (fabCategory) fabCategory.style.display = "none";
             if (fabFilter) fabFilter.style.display = "flex";
         } else if (pageId === "pageLocations") {
             if (fabItem) fabItem.style.display = "none";
             if (fabLoc) fabLoc.style.display = "flex";  // Only show on Locations tab
+            if (fabTempLoc) fabTempLoc.style.display = "none";
             if (fabTag) fabTag.style.display = "none";
+            if (fabCategory) fabCategory.style.display = "none";
+            if (fabFilter) fabFilter.style.display = "flex";
+        } else if (pageId === "pageTempLocations") {
+            if (fabItem) fabItem.style.display = "none";
+            if (fabLoc) fabLoc.style.display = "none";
+            if (fabTempLoc) fabTempLoc.style.display = "flex";
+            if (fabTag) fabTag.style.display = "none";
+            if (fabCategory) fabCategory.style.display = "none";
             if (fabFilter) fabFilter.style.display = "flex";
         } else if (pageId === "pageTags") {
             if (fabItem) fabItem.style.display = "none";
             if (fabLoc) fabLoc.style.display = "none";
+            if (fabTempLoc) fabTempLoc.style.display = "none";
             if (fabTag) fabTag.style.display = "flex";
+            if (fabCategory) fabCategory.style.display = "none";
+            if (fabFilter) fabFilter.style.display = "flex";
+        } else if (pageId === "pageCategories") {
+            if (fabItem) fabItem.style.display = "none";
+            if (fabLoc) fabLoc.style.display = "none";
+            if (fabTempLoc) fabTempLoc.style.display = "none";
+            if (fabTag) fabTag.style.display = "none";
+            if (fabCategory) fabCategory.style.display = "flex";
             if (fabFilter) fabFilter.style.display = "flex";
         } else {
             if (fabItem) fabItem.style.display = "none";
             if (fabLoc) fabLoc.style.display = "none";  // Hidden on all utility tabs
+            if (fabTempLoc) fabTempLoc.style.display = "none";
             if (fabTag) fabTag.style.display = "none";
+            if (fabCategory) fabCategory.style.display = "none";
             if (fabFilter) fabFilter.style.display = "flex";
         }
     }
@@ -3859,9 +3874,14 @@ function setupTagSearchInput(mode) {
     const listHeader = document.createElement("div");
     listHeader.className = "tag-search-options-header";
     listHeader.innerHTML = `<span>Select tags</span><button type="button" aria-label="Close tag picker">&times;</button>`;
+    const pickerSearch = document.createElement("input");
+    pickerSearch.type = "text";
+    pickerSearch.className = "tag-search-options-search";
+    pickerSearch.placeholder = "Search tags...";
+    pickerSearch.autocomplete = "off";
     const listGrid = document.createElement("div");
     listGrid.className = "tag-search-options-grid";
-    list.append(listHeader, listGrid);
+    list.append(listHeader, pickerSearch, listGrid);
 
     const closeList = () => {
         list.classList.remove("open");
@@ -3869,23 +3889,26 @@ function setupTagSearchInput(mode) {
     };
 
     listHeader.querySelector("button").onclick = closeList;
+    setupFloatingPanelDrag(list, listHeader);
 
     const renderOptions = () => {
         const selected = mode === "add" ? activeSelectedAddTags : activeSelectedEditTags;
-        const term = input.value.trim().toLowerCase();
+        const term = pickerSearch.value.trim().toLowerCase();
         const matches = globalCachedTags
             .map(tag => tag.name)
-            .filter(name => !selected.includes(name) && (!term || name.toLowerCase().includes(term)));
+            .filter(name => !term || name.toLowerCase().includes(term));
         listGrid.innerHTML = "";
         matches.forEach(name => {
+            const isSelected = selected.includes(name);
             const option = document.createElement("button");
             option.type = "button";
             option.textContent = name;
+            option.classList.toggle("selected", isSelected);
             option.onclick = () => {
-                handleTagSelection(mode, name);
-                input.value = "";
+                if (!isSelected) handleTagSelection(mode, name);
+                pickerSearch.value = "";
                 renderOptions();
-                input.focus();
+                pickerSearch.focus();
             };
             listGrid.appendChild(option);
         });
@@ -3900,21 +3923,59 @@ function setupTagSearchInput(mode) {
         const viewportTop = viewport?.offsetTop || 0;
         const viewportHeight = viewport?.height || window.innerHeight;
         const targetWidth = modalRect?.width || input.getBoundingClientRect().width;
-        list.style.left = "50%";
-        list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
-        list.style.top = `${Math.max(12, Math.min(viewportTop + 72, viewportTop + viewportHeight - 360))}px`;
-        list.style.transform = "translateX(-50%)";
+        if (list.dataset.moved !== "true") {
+            list.style.left = "50%";
+            list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
+            list.style.top = `${Math.max(12, Math.min(viewportTop + 72, viewportTop + viewportHeight - 360))}px`;
+            list.style.transform = "translateX(-50%)";
+        }
         list.style.display = "block";
         list.classList.add("open");
+        pickerSearch.focus();
     };
 
-    input.addEventListener("focus", renderOptions);
-    input.addEventListener("input", renderOptions);
+    input.addEventListener("focus", () => {
+        pickerSearch.value = "";
+        renderOptions();
+    });
+    input.addEventListener("input", () => {
+        pickerSearch.value = input.value;
+        renderOptions();
+    });
+    pickerSearch.addEventListener("input", renderOptions);
     document.addEventListener("pointerdown", event => {
         if (!wrapper.contains(event.target) && !list.contains(event.target)) closeList();
     });
     wrapper.append(input, list);
     select.parentElement.insertBefore(wrapper, select);
+}
+
+function setupFloatingPanelDrag(panel, handle) {
+    if (!panel || !handle || panel.dataset.dragReady === "true") return;
+    panel.dataset.dragReady = "true";
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+    handle.addEventListener("pointerdown", event => {
+        if (event.target.closest("button")) return;
+        startX = event.clientX;
+        startY = event.clientY;
+        const rect = panel.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+        panel.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+        if (!event.buttons) return;
+        const nextLeft = Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, startLeft + event.clientX - startX));
+        const nextTop = Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, startTop + event.clientY - startY));
+        panel.style.left = `${nextLeft}px`;
+        panel.style.top = `${nextTop}px`;
+        panel.style.transform = "none";
+        panel.dataset.moved = "true";
+    });
 }
 
 function handleTagSelection(mode, tagName) {
