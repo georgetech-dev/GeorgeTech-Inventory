@@ -10,6 +10,7 @@ import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.nfc.tech.Ndef;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -74,6 +75,10 @@ public class MainActivity extends Activity {
         setupWebView();
         setupNfc();
         webView.loadUrl(APP_URL);
+        String launchToken = extractNfcToken(getIntent());
+        if (launchToken != null && !launchToken.isEmpty()) {
+            webView.postDelayed(() -> dispatchNfcToWeb(launchToken), 700);
+        }
     }
 
     private void setupWebView() {
@@ -210,12 +215,28 @@ public class MainActivity extends Activity {
         super.onResume();
         if (nfcAdapter != null) {
             nfcAdapter.enableForegroundDispatch(this, nfcPendingIntent, null, null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                int flags = NfcAdapter.FLAG_READER_NFC_A
+                        | NfcAdapter.FLAG_READER_NFC_B
+                        | NfcAdapter.FLAG_READER_NFC_F
+                        | NfcAdapter.FLAG_READER_NFC_V
+                        | NfcAdapter.FLAG_READER_NFC_BARCODE;
+                nfcAdapter.enableReaderMode(this, tag -> {
+                    String token = extractNfcTokenFromTag(tag);
+                    if (token != null && !token.isEmpty()) {
+                        runOnUiThread(() -> dispatchNfcToWeb(token));
+                    }
+                }, flags, null);
+            }
         }
     }
 
     @Override
     protected void onPause() {
         if (nfcAdapter != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                nfcAdapter.disableReaderMode(this);
+            }
             nfcAdapter.disableForegroundDispatch(this);
         }
         super.onPause();
@@ -299,7 +320,30 @@ public class MainActivity extends Activity {
         }
 
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-        return tag != null ? bytesToHex(tag.getId()) : null;
+        return extractNfcTokenFromTag(tag);
+    }
+
+    private String extractNfcTokenFromTag(Tag tag) {
+        if (tag == null) return null;
+        Ndef ndef = Ndef.get(tag);
+        if (ndef != null) {
+            try {
+                ndef.connect();
+                NdefMessage message = ndef.getNdefMessage();
+                if (message != null) {
+                    for (NdefRecord record : message.getRecords()) {
+                        String text = decodeTextRecord(record);
+                        if (text != null && !text.isEmpty()) return text;
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                try {
+                    ndef.close();
+                } catch (IOException ignored) {}
+            }
+        }
+        return bytesToHex(tag.getId());
     }
 
     private String decodeTextRecord(NdefRecord record) {

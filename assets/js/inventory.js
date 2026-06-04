@@ -4504,6 +4504,13 @@ if (!window.fieldHubNativeNfcListenerInstalled) {
     window.addEventListener("fieldhub-native-nfc", event => {
         const token = String(event.detail || "").trim();
         if (!token) return;
+        const nfcStatusDiv = document.getElementById("nfcStatusDisplay");
+        if (nfcStatusDiv) {
+            nfcStatusDiv.textContent = "NFC tag detected";
+            nfcStatusDiv.style.color = "#065f46";
+            nfcStatusDiv.style.background = "#bbf7d0";
+            nfcStatusDiv.style.borderColor = "#10b981";
+        }
         const now = Date.now();
         if (token === lastNativeNfcToken && now - lastNativeNfcAt < 1200) return;
         lastNativeNfcToken = token;
