@@ -676,7 +676,7 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
 .tag-search-options {
     position: fixed;
     z-index: 20050;
-    max-height: min(52vh, 360px);
+    max-height: min(44vh, 320px);
     overflow: hidden;
     background: #ffffff;
     border: 1px solid #cbd5e1;
@@ -713,7 +713,7 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    max-height: calc(min(52vh, 360px) - 52px);
+    max-height: calc(min(44vh, 320px) - 52px);
     overflow-y: auto;
 }
 
@@ -1890,6 +1890,8 @@ body:has(.modal[style*="display:block"]) {
         border-radius: 10px;
         z-index: 12050;
         scrollbar-width: none;
+        gap: 0;
+        touch-action: pan-y;
     }
 
     .tag-alphabet-rail::-webkit-scrollbar {
@@ -1898,10 +1900,10 @@ body:has(.modal[style*="display:block"]) {
 
     .tag-alphabet-rail button {
         width: 22px;
-        min-height: 20px;
-        height: 20px;
+        min-height: 17px;
+        height: 17px;
         flex: 0 0 auto;
-        font-size: 10px;
+        font-size: 9px;
     }
 
     .inventory-app-header {

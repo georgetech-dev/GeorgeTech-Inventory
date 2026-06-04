@@ -3896,13 +3896,15 @@ function setupTagSearchInput(mode) {
             empty.textContent = "No tags found";
             listGrid.appendChild(empty);
         }
-        const rect = input.getBoundingClientRect();
         const modalRect = input.closest(".modal-content")?.getBoundingClientRect();
-        const targetWidth = modalRect?.width || rect.width;
+        const viewport = window.visualViewport;
+        const viewportTop = viewport?.offsetTop || 0;
+        const viewportHeight = viewport?.height || window.innerHeight;
+        const targetWidth = modalRect?.width || input.getBoundingClientRect().width;
         list.style.left = "50%";
         list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
-        list.style.top = `${Math.max(12, rect.top - 12)}px`;
-        list.style.transform = "translate(-50%, -100%)";
+        list.style.top = `${Math.max(12, Math.min(viewportTop + 72, viewportTop + viewportHeight - 360))}px`;
+        list.style.transform = "translateX(-50%)";
         list.style.display = "block";
         list.classList.add("open");
     };
@@ -3976,6 +3978,9 @@ async function loadTagsAdmin() {
 function setupTagAlphabetRail(rail) {
     if (rail.dataset.ready === "true") return;
     rail.dataset.ready = "true";
+    let pointerStartY = 0;
+    let pointerDragging = false;
+    let activePointerId = null;
     const jumpFromPoint = (clientY) => {
         const target = document.elementFromPoint(rail.getBoundingClientRect().left + rail.offsetWidth / 2, clientY);
         const button = target?.closest?.("#tagAlphabetRail button:not(:disabled)");
@@ -3983,11 +3988,27 @@ function setupTagAlphabetRail(rail) {
         document.getElementById(`tag-section-${button.dataset.letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
     rail.addEventListener("pointerdown", event => {
-        rail.setPointerCapture?.(event.pointerId);
-        jumpFromPoint(event.clientY);
+        activePointerId = event.pointerId;
+        pointerStartY = event.clientY;
+        pointerDragging = false;
     });
     rail.addEventListener("pointermove", event => {
-        if (event.buttons) jumpFromPoint(event.clientY);
+        if (activePointerId !== event.pointerId || !event.buttons) return;
+        if (Math.abs(event.clientY - pointerStartY) < 8 && !pointerDragging) return;
+        pointerDragging = true;
+        rail.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        jumpFromPoint(event.clientY);
+    });
+    rail.addEventListener("pointerup", event => {
+        if (activePointerId !== event.pointerId) return;
+        if (!pointerDragging) jumpFromPoint(event.clientY);
+        activePointerId = null;
+        pointerDragging = false;
+    });
+    rail.addEventListener("pointercancel", () => {
+        activePointerId = null;
+        pointerDragging = false;
     });
 }
 
