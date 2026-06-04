@@ -742,6 +742,8 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     text-transform: uppercase;
     cursor: grab;
     user-select: none;
+    touch-action: none;
+    -webkit-user-select: none;
 }
 
 .tag-search-options.dragging .tag-search-options-header {
@@ -1496,7 +1498,7 @@ body:has(.modal[style*="display:block"]) {
     border-radius: 16px !important;
     text-align: left !important;
     box-sizing: border-box !important;
-    max-height: 90vh !important;
+    max-height: 85vh !important;
     overflow-y: auto !important;
 }
 

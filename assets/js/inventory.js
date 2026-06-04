@@ -3963,6 +3963,7 @@ function setupFloatingPanelDrag(panel, handle) {
     panel.dataset.dragReady = "true";
     let startY = 0;
     let startTop = 0;
+    let latestY = 0;
     let dragBaseY = 0;
     let dragBaseTop = 0;
     let holdTimer = null;
@@ -3977,21 +3978,25 @@ function setupFloatingPanelDrag(panel, handle) {
         if (event.target.closest("button")) return;
         activePointerId = event.pointerId;
         startY = event.clientY;
+        latestY = event.clientY;
         const rect = panel.getBoundingClientRect();
         startTop = rect.top;
         dragActive = false;
         panel.classList.add("drag-armed");
+        handle.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
         holdTimer = setTimeout(() => {
             dragActive = true;
-            dragBaseY = startY;
-            dragBaseTop = startTop;
+            dragBaseY = latestY;
+            dragBaseTop = panel.getBoundingClientRect().top;
             panel.classList.remove("drag-armed");
             panel.classList.add("dragging");
-            handle.setPointerCapture?.(event.pointerId);
         }, 500);
     });
     handle.addEventListener("pointermove", event => {
-        if (activePointerId !== event.pointerId || !event.buttons) return;
+        if (activePointerId !== event.pointerId) return;
+        latestY = event.clientY;
+        event.preventDefault();
         if (!dragActive) {
             return;
         }
@@ -4007,6 +4012,7 @@ function setupFloatingPanelDrag(panel, handle) {
         if (dragActive) saveFloatingPanelState(panel);
         dragActive = false;
         activePointerId = null;
+        handle.releasePointerCapture?.(event.pointerId);
     });
     handle.addEventListener("pointercancel", () => {
         clearHold();
