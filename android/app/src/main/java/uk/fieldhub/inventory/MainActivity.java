@@ -17,6 +17,7 @@ import android.provider.MediaStore;
 import android.view.View;
 import android.view.Window;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 import android.webkit.ConsoleMessage;
 import android.webkit.PermissionRequest;
@@ -76,17 +77,27 @@ public class MainActivity extends Activity {
     }
 
     private void setupWebView() {
-        webView = new WebView(this);
-        webView.setLayoutParams(new ViewGroup.LayoutParams(
+        FrameLayout root = new FrameLayout(this);
+        root.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        setContentView(webView);
-        ViewCompat.setOnApplyWindowInsetsListener(webView, (view, insets) -> {
+        root.setBackgroundColor(0xFF3D8142);
+
+        webView = new WebView(this);
+        webView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        root.addView(webView);
+        setContentView(root);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            view.setPadding(0, bars.top, 0, bars.bottom);
+            webView.setPadding(0, bars.top, 0, bars.bottom);
+            webView.setClipToPadding(false);
             return insets;
         });
+        ViewCompat.requestApplyInsets(root);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);

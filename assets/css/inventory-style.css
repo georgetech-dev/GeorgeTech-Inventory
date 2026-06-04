@@ -970,7 +970,7 @@ body:has(.modal[style*="display:block"]) {
     }
 
     .status-indicator {
-        bottom: 12px;
+        bottom: calc(12px + max(env(safe-area-inset-bottom), 72px));
         right: 8px;
     }
 
@@ -1881,7 +1881,7 @@ body:has(.modal[style*="display:block"]) {
         position: fixed;
         left: 6px;
         top: 154px;
-        bottom: calc(132px + env(safe-area-inset-bottom));
+        bottom: calc(132px + max(env(safe-area-inset-bottom), 72px));
         width: 26px;
         max-height: none;
         overflow-y: auto;
@@ -1891,7 +1891,8 @@ body:has(.modal[style*="display:block"]) {
         z-index: 12050;
         scrollbar-width: none;
         gap: 0;
-        touch-action: pan-y;
+        touch-action: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .tag-alphabet-rail::-webkit-scrollbar {
@@ -1968,7 +1969,7 @@ body:has(.modal[style*="display:block"]) {
     }
 
     .inventory-footer {
-        padding-bottom: calc(130px + env(safe-area-inset-bottom));
+        padding-bottom: calc(130px + max(env(safe-area-inset-bottom), 72px));
         border-top: solid rgba(97, 95, 95, 0.747) 2px;
         width:75%;
         margin: auto;

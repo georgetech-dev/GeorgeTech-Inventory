@@ -6,7 +6,7 @@
 6
 7    <uses-sdk
 8        android:minSdkVersion="26"
-9        android:targetSdkVersion="35" />
+9        android:targetSdkVersion="34" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
 11-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:4:5-67

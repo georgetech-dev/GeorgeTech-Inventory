@@ -75,7 +75,7 @@
                 position: fixed !important;
                 left: 16px !important;
                 right: auto !important;
-                bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+                bottom: calc(16px + max(env(safe-area-inset-bottom), 72px)) !important;
                 top: auto !important;
                 transform: none !important;
                 gap: 12px;
@@ -1349,7 +1349,7 @@
                 fabContainer.style.position = "fixed";
                 fabContainer.style.left = "16px";
                 fabContainer.style.right = "auto";
-                fabContainer.style.bottom = "calc(16px + env(safe-area-inset-bottom))";
+                fabContainer.style.bottom = "calc(16px + max(env(safe-area-inset-bottom), 72px))";
                 fabContainer.style.top = "auto";
                 fabContainer.style.transform = "none";
                 fabContainer.style.zIndex = "13000";

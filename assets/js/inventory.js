@@ -1292,7 +1292,7 @@ function showPage(pageId) {
         fabContainer.style.position = "fixed";
         fabContainer.style.left = "16px";
         fabContainer.style.right = "auto";
-        fabContainer.style.bottom = "16px";
+        fabContainer.style.bottom = "calc(16px + max(env(safe-area-inset-bottom), 72px))";
         fabContainer.style.top = "auto";
         fabContainer.style.transform = "none";
         fabContainer.style.zIndex = "13000";
@@ -3978,37 +3978,10 @@ async function loadTagsAdmin() {
 function setupTagAlphabetRail(rail) {
     if (rail.dataset.ready === "true") return;
     rail.dataset.ready = "true";
-    let pointerStartY = 0;
-    let pointerDragging = false;
-    let activePointerId = null;
-    const jumpFromPoint = (clientY) => {
-        const target = document.elementFromPoint(rail.getBoundingClientRect().left + rail.offsetWidth / 2, clientY);
-        const button = target?.closest?.("#tagAlphabetRail button:not(:disabled)");
+    rail.addEventListener("click", event => {
+        const button = event.target?.closest?.("#tagAlphabetRail button:not(:disabled)");
         if (!button) return;
         document.getElementById(`tag-section-${button.dataset.letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-    rail.addEventListener("pointerdown", event => {
-        activePointerId = event.pointerId;
-        pointerStartY = event.clientY;
-        pointerDragging = false;
-    });
-    rail.addEventListener("pointermove", event => {
-        if (activePointerId !== event.pointerId || !event.buttons) return;
-        if (Math.abs(event.clientY - pointerStartY) < 8 && !pointerDragging) return;
-        pointerDragging = true;
-        rail.setPointerCapture?.(event.pointerId);
-        event.preventDefault();
-        jumpFromPoint(event.clientY);
-    });
-    rail.addEventListener("pointerup", event => {
-        if (activePointerId !== event.pointerId) return;
-        if (!pointerDragging) jumpFromPoint(event.clientY);
-        activePointerId = null;
-        pointerDragging = false;
-    });
-    rail.addEventListener("pointercancel", () => {
-        activePointerId = null;
-        pointerDragging = false;
     });
 }
 
