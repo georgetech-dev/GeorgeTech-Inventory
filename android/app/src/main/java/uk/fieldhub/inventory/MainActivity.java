@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.ViewGroup;
@@ -44,6 +45,7 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://parts.fieldhub.uk/index.html";
+    private static final String NFC_LOG_TAG = "FieldHubNFC";
     private static final int REQ_WEB_PERMISSION = 1001;
     private static final int REQ_FILE_CHOOSER = 1002;
 
@@ -143,6 +145,7 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.d(NFC_LOG_TAG, "JS console: " + consoleMessage.message());
                 return super.onConsoleMessage(consoleMessage);
             }
         });
@@ -202,6 +205,7 @@ public class MainActivity extends Activity {
 
     private void setupNfc() {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+        Log.d(NFC_LOG_TAG, "setupNfc adapterPresent=" + (nfcAdapter != null));
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -214,6 +218,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (nfcAdapter != null) {
+            Log.d(NFC_LOG_TAG, "onResume nfcEnabled=" + nfcAdapter.isEnabled());
             nfcAdapter.enableForegroundDispatch(this, nfcPendingIntent, null, null);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 int flags = NfcAdapter.FLAG_READER_NFC_A
@@ -222,18 +227,23 @@ public class MainActivity extends Activity {
                         | NfcAdapter.FLAG_READER_NFC_V
                         | NfcAdapter.FLAG_READER_NFC_BARCODE;
                 nfcAdapter.enableReaderMode(this, tag -> {
+                    Log.d(NFC_LOG_TAG, "readerMode tag detected");
                     String token = extractNfcTokenFromTag(tag);
+                    Log.d(NFC_LOG_TAG, "readerMode token=" + token);
                     if (token != null && !token.isEmpty()) {
                         runOnUiThread(() -> dispatchNfcToWeb(token));
                     }
                 }, flags, null);
             }
+        } else {
+            Log.d(NFC_LOG_TAG, "onResume no NFC adapter");
         }
     }
 
     @Override
     protected void onPause() {
         if (nfcAdapter != null) {
+            Log.d(NFC_LOG_TAG, "onPause disabling NFC dispatch");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 nfcAdapter.disableReaderMode(this);
             }
@@ -245,7 +255,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        Log.d(NFC_LOG_TAG, "onNewIntent action=" + (intent != null ? intent.getAction() : "null"));
         String token = extractNfcToken(intent);
+        Log.d(NFC_LOG_TAG, "onNewIntent token=" + token);
         if (token != null && !token.isEmpty()) {
             dispatchNfcToWeb(token);
         }
@@ -373,6 +385,7 @@ public class MainActivity extends Activity {
                 "(function(){"
                         + "if(window.__fieldHubNfcInstalled)return;"
                         + "window.__fieldHubNfcInstalled=true;"
+                        + "window.__fieldHubNativeNfcStatus={installed:true,lastToken:null,lastSeenAt:null,dispatchCount:0};"
                         + "window.__fieldHubNfcReaders=[];"
                         + "window.NDEFReader=function(){};"
                         + "window.NDEFReader.prototype.scan=function(options){"
@@ -384,6 +397,7 @@ public class MainActivity extends Activity {
                         + "return Promise.resolve();"
                         + "};"
                         + "window.__fieldHubDispatchNfc=function(text){"
+                        + "window.__fieldHubNativeNfcStatus={installed:true,lastToken:text,lastSeenAt:new Date().toISOString(),dispatchCount:((window.__fieldHubNativeNfcStatus&&window.__fieldHubNativeNfcStatus.dispatchCount)||0)+1};"
                         + "var bytes=(window.TextEncoder?Array.from(new TextEncoder().encode(text)):text.split('').map(function(c){return c.charCodeAt(0);}));"
                         + "var payload=new Uint8Array(bytes.length+3);"
                         + "payload[0]=2;payload[1]=101;payload[2]=110;"
@@ -398,6 +412,7 @@ public class MainActivity extends Activity {
 
     private void dispatchNfcToWeb(String token) {
         if (webView == null) return;
+        Log.d(NFC_LOG_TAG, "dispatchNfcToWeb token=" + token);
         String script = "window.__fieldHubDispatchNfc && window.__fieldHubDispatchNfc(" + JSONObject.quote(token) + ");";
         webView.post(() -> webView.evaluateJavascript(script, null));
     }

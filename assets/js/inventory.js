@@ -4291,6 +4291,7 @@ let html5QrcodeScannerInstance = null;
 let isProcessingUnifiedScan = false;
 let lastNativeNfcToken = "";
 let lastNativeNfcAt = 0;
+let diagnosticsNfcAbortController = null;
 
 window.openBarcodeScannerModal = async function(targetInputId = null) {
     // 1. Clean up any previous instances
@@ -4511,6 +4512,8 @@ if (!window.fieldHubNativeNfcListenerInstalled) {
             nfcStatusDiv.style.background = "#bbf7d0";
             nfcStatusDiv.style.borderColor = "#10b981";
         }
+        setNfcDiagnosticsMessage("Native Android NFC event received.", "ok");
+        refreshNfcDiagnosticsStatus();
         const now = Date.now();
         if (token === lastNativeNfcToken && now - lastNativeNfcAt < 1200) return;
         lastNativeNfcToken = token;
@@ -4524,6 +4527,89 @@ if (!window.fieldHubNativeNfcListenerInstalled) {
         window.executeUnifiedScannerRouting(token, activeTarget, "nfc");
     });
 }
+
+function setNfcDiagnosticsMessage(message, state = "neutral") {
+    const statusEl = document.getElementById("nfcDiagnosticsStatus");
+    const summaryEl = document.getElementById("nfcDiagnosticsSummary");
+    const colors = {
+        neutral: ["#f8fafc", "#334155", "#e2e8f0"],
+        ok: ["#dcfce7", "#065f46", "#10b981"],
+        warn: ["#ffedd5", "#9a3412", "#fed7aa"],
+        error: ["#fee2e2", "#991b1b", "#fecaca"]
+    };
+    const [background, color, border] = colors[state] || colors.neutral;
+    [statusEl, summaryEl].forEach(el => {
+        if (!el) return;
+        el.textContent = message;
+        el.style.background = background;
+        el.style.color = color;
+        el.style.borderColor = border;
+    });
+}
+
+function refreshNfcDiagnosticsStatus() {
+    const status = window.__fieldHubNativeNfcStatus || {};
+    const logEl = document.getElementById("nfcDiagnosticsLog");
+    const tokenEl = document.getElementById("nfcDiagnosticsToken");
+    if (tokenEl) tokenEl.value = status.lastToken || "";
+    if (logEl) {
+        logEl.textContent = JSON.stringify({
+            secureContext: window.isSecureContext,
+            hasNdefReader: "NDEFReader" in window,
+            nativeBridgeInstalled: !!status.installed,
+            dispatchCount: status.dispatchCount || 0,
+            lastSeenAt: status.lastSeenAt || null,
+            lastToken: status.lastToken || null
+        }, null, 2);
+    }
+    if (status.lastToken) setNfcDiagnosticsMessage("Native NFC tag received by WebView.", "ok");
+}
+
+async function openNfcDiagnosticsModal() {
+    document.getElementById("nfcDiagnosticsModal").style.display = "flex";
+    setNfcDiagnosticsMessage("Starting NFC-only listener. Hold a tag to the phone.", "neutral");
+    refreshNfcDiagnosticsStatus();
+    if (diagnosticsNfcAbortController) {
+        diagnosticsNfcAbortController.abort();
+        diagnosticsNfcAbortController = null;
+    }
+    if (!("NDEFReader" in window) || !window.isSecureContext) {
+        setNfcDiagnosticsMessage("Web NFC is unavailable here. Waiting for native Android bridge event.", "warn");
+        return;
+    }
+    try {
+        diagnosticsNfcAbortController = new AbortController();
+        const ndef = new NDEFReader();
+        await ndef.scan({ signal: diagnosticsNfcAbortController.signal });
+        ndef.onreading = event => {
+            const token = getNfcTextFromEvent(event);
+            window.__fieldHubNativeNfcStatus = {
+                installed: true,
+                lastToken: token,
+                lastSeenAt: new Date().toISOString(),
+                dispatchCount: ((window.__fieldHubNativeNfcStatus?.dispatchCount) || 0) + 1
+            };
+            setNfcDiagnosticsMessage("Web NFC tag received.", "ok");
+            refreshNfcDiagnosticsStatus();
+        };
+        setNfcDiagnosticsMessage("NFC-only listener ready. Hold a tag to the phone.", "ok");
+    } catch (error) {
+        setNfcDiagnosticsMessage(`NFC listener error: ${error?.message || error}`, "error");
+        refreshNfcDiagnosticsStatus();
+    }
+}
+
+function closeNfcDiagnosticsModal() {
+    if (diagnosticsNfcAbortController) {
+        diagnosticsNfcAbortController.abort();
+        diagnosticsNfcAbortController = null;
+    }
+    closeModal("nfcDiagnosticsModal");
+}
+
+window.openNfcDiagnosticsModal = openNfcDiagnosticsModal;
+window.closeNfcDiagnosticsModal = closeNfcDiagnosticsModal;
+window.refreshNfcDiagnosticsStatus = refreshNfcDiagnosticsStatus;
 
 function closeBarcodeScannerModal() { 
     document.getElementById("barcodeScannerModal").style.display = "none"; 

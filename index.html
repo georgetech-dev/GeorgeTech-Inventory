@@ -366,6 +366,12 @@
                 <input type="range" id="settingsDefaultZoom" min="1.0" max="4.0" step="0.1" value="1.5" oninput="document.getElementById('settingsZoomValDisplay').textContent = this.value + 'x'; saveHardwarePreferences();" style="width:100%;">
             </div>
         </div>
+        <div class="item-card" style="text-align: left; padding: 25px; border: 1px solid #bbf7d0; margin-top: 16px;">
+            <h3 style="margin-top: 0; color: #065f46; font-size: 20px;">NFC Diagnostics</h3>
+            <p style="font-size: 14px; color: #475569; margin-bottom: 14px;">Test NFC without starting the camera. This shows whether native Android and the WebView bridge are seeing the tag.</p>
+            <div id="nfcDiagnosticsSummary" style="font-size: 13px; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">NFC diagnostics not started.</div>
+            <button class="btn-primary" onclick="openNfcDiagnosticsModal()" style="width: 100%; background:#065f46; border-color:#065f46;">Open NFC Test</button>
+        </div>
     </div>
 
     <div id="settings-backups" class="settings-tab-content" style="display:none;">
@@ -919,6 +925,21 @@
             <p style="font-size: 14px; color: #666; margin-bottom: 25px;">Hold your device near the NFC tag...</p>
             <div class="modal-buttons" style="justify-content: center;">
                 <button class="btn-outline w-100" onclick="closeNfcScannerModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="nfcDiagnosticsModal" class="modal" style="z-index: 10020;">
+        <div class="modal-content" style="max-width: 420px; text-align: left; padding: 24px;">
+            <h3 style="margin-top:0; color:#065f46;">NFC Test</h3>
+            <div id="nfcDiagnosticsStatus" style="padding: 12px; border-radius: 8px; background:#f8fafc; border:1px solid #e2e8f0; color:#334155; font-weight:700; margin-bottom:12px;">Starting NFC listener...</div>
+            <label style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase;">Last NFC token</label>
+            <textarea id="nfcDiagnosticsToken" readonly rows="3" style="width:100%; box-sizing:border-box; font-family:monospace; margin-bottom:12px;"></textarea>
+            <label style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase;">Bridge status</label>
+            <pre id="nfcDiagnosticsLog" style="white-space:pre-wrap; max-height:180px; overflow:auto; background:#0f172a; color:#e2e8f0; border-radius:8px; padding:10px; font-size:12px;"></pre>
+            <div class="modal-buttons">
+                <button class="btn-outline" onclick="closeNfcDiagnosticsModal()">Close</button>
+                <button class="btn-primary" onclick="refreshNfcDiagnosticsStatus()" style="background:#065f46; border-color:#065f46;">Refresh</button>
             </div>
         </div>
     </div>
