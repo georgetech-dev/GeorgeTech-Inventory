@@ -585,6 +585,7 @@ function customConfirm(message, title = "Confirm Action", isDanger = false) {
 
 function closeModal(id) {
     document.getElementById(id).style.display = "none";
+    if (id === "centralTagModal") setTagAlphabetRailModalState(false);
     document.body.classList.toggle("modal-active", !!document.querySelector('.modal[style*="display: flex"], .modal[style*="display:flex"], .modal[style*="display: block"], .modal[style*="display:block"]'));
     delete modalDirtySnapshots[id];
     if (id === "addLocationModal") {
@@ -3871,6 +3872,7 @@ function setupTagSearchInput(mode) {
     input.autocomplete = "off";
     const list = document.createElement("div");
     list.className = "tag-search-options";
+    restoreFloatingPanelState(list);
     const listHeader = document.createElement("div");
     listHeader.className = "tag-search-options-header";
     listHeader.innerHTML = `<span>Select tags</span><button type="button" aria-label="Close tag picker">&times;</button>`;
@@ -3884,11 +3886,18 @@ function setupTagSearchInput(mode) {
     list.append(listHeader, pickerSearch, listGrid);
 
     const closeList = () => {
+        saveFloatingPanelState(list);
+        pickerSearch.blur();
+        input.blur();
         list.classList.remove("open");
         list.style.display = "none";
     };
 
-    listHeader.querySelector("button").onclick = closeList;
+    listHeader.querySelector("button").addEventListener("pointerdown", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeList();
+    });
     setupFloatingPanelDrag(list, listHeader);
 
     const renderOptions = () => {
@@ -3905,10 +3914,10 @@ function setupTagSearchInput(mode) {
             option.textContent = name;
             option.classList.toggle("selected", isSelected);
             option.onclick = () => {
-                if (!isSelected) handleTagSelection(mode, name);
+                if (isSelected) removeSelectedTagBadge(mode, name);
+                else handleTagSelection(mode, name);
                 pickerSearch.value = "";
                 renderOptions();
-                pickerSearch.focus();
             };
             listGrid.appendChild(option);
         });
@@ -3923,15 +3932,14 @@ function setupTagSearchInput(mode) {
         const viewportTop = viewport?.offsetTop || 0;
         const viewportHeight = viewport?.height || window.innerHeight;
         const targetWidth = modalRect?.width || input.getBoundingClientRect().width;
-        if (list.dataset.moved !== "true") {
-            list.style.left = "50%";
-            list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
+        list.style.left = "50%";
+        list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
+        list.style.transform = "translateX(-50%)";
+        if (list.dataset.saved !== "true") {
             list.style.top = `${Math.max(12, Math.min(viewportTop + 72, viewportTop + viewportHeight - 360))}px`;
-            list.style.transform = "translateX(-50%)";
         }
         list.style.display = "block";
         list.classList.add("open");
-        pickerSearch.focus();
     };
 
     input.addEventListener("focus", () => {
@@ -3953,29 +3961,82 @@ function setupTagSearchInput(mode) {
 function setupFloatingPanelDrag(panel, handle) {
     if (!panel || !handle || panel.dataset.dragReady === "true") return;
     panel.dataset.dragReady = "true";
-    let startX = 0;
     let startY = 0;
-    let startLeft = 0;
     let startTop = 0;
+    let dragBaseY = 0;
+    let dragBaseTop = 0;
+    let holdTimer = null;
+    let activePointerId = null;
+    let dragActive = false;
+    const clearHold = () => {
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = null;
+        if (!dragActive) panel.classList.remove("drag-armed");
+    };
     handle.addEventListener("pointerdown", event => {
         if (event.target.closest("button")) return;
-        startX = event.clientX;
+        activePointerId = event.pointerId;
         startY = event.clientY;
         const rect = panel.getBoundingClientRect();
-        startLeft = rect.left;
         startTop = rect.top;
-        panel.setPointerCapture?.(event.pointerId);
-        event.preventDefault();
+        dragActive = false;
+        panel.classList.add("drag-armed");
+        holdTimer = setTimeout(() => {
+            dragActive = true;
+            dragBaseY = startY;
+            dragBaseTop = startTop;
+            panel.classList.remove("drag-armed");
+            panel.classList.add("dragging");
+            handle.setPointerCapture?.(event.pointerId);
+        }, 500);
     });
     handle.addEventListener("pointermove", event => {
-        if (!event.buttons) return;
-        const nextLeft = Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, startLeft + event.clientX - startX));
-        const nextTop = Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, startTop + event.clientY - startY));
-        panel.style.left = `${nextLeft}px`;
+        if (activePointerId !== event.pointerId || !event.buttons) return;
+        if (!dragActive) {
+            return;
+        }
+        const nextTop = Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, dragBaseTop + event.clientY - dragBaseY));
         panel.style.top = `${nextTop}px`;
-        panel.style.transform = "none";
-        panel.dataset.moved = "true";
+        panel.dataset.saved = "true";
+        event.preventDefault();
     });
+    handle.addEventListener("pointerup", event => {
+        if (activePointerId !== event.pointerId) return;
+        clearHold();
+        panel.classList.remove("dragging");
+        if (dragActive) saveFloatingPanelState(panel);
+        dragActive = false;
+        activePointerId = null;
+    });
+    handle.addEventListener("pointercancel", () => {
+        clearHold();
+        panel.classList.remove("dragging");
+        dragActive = false;
+        activePointerId = null;
+    });
+}
+
+function restoreFloatingPanelState(panel) {
+    try {
+        const saved = JSON.parse(localStorage.getItem("fieldhubTagPickerLayout") || "{}");
+        if (Number.isFinite(saved.top)) {
+            panel.style.top = `${Math.max(8, Math.min(window.innerHeight - 120, saved.top))}px`;
+            panel.dataset.saved = "true";
+        }
+        if (Number.isFinite(saved.height)) {
+            panel.style.height = `${Math.max(190, Math.min(window.innerHeight - 24, saved.height))}px`;
+            panel.dataset.saved = "true";
+        }
+    } catch {}
+}
+
+function saveFloatingPanelState(panel) {
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    localStorage.setItem("fieldhubTagPickerLayout", JSON.stringify({
+        top: Math.round(rect.top),
+        height: Math.round(rect.height)
+    }));
 }
 
 function handleTagSelection(mode, tagName) {
@@ -3988,6 +4049,18 @@ function handleTagSelection(mode, tagName) {
 function removeSelectedTagBadge(mode, tagName) {
     if (mode === 'add') activeSelectedAddTags = activeSelectedAddTags.filter(t => t !== tagName); else activeSelectedEditTags = activeSelectedEditTags.filter(t => t !== tagName);
     renderActiveTagPills(mode);
+}
+
+function setTagAlphabetRailModalState(isOpen) {
+    const rail = document.getElementById("tagAlphabetRail");
+    if (!rail) return;
+    rail.classList.remove("registry-modal-open", "registry-modal-returning");
+    if (isOpen) {
+        rail.classList.add("registry-modal-open");
+        return;
+    }
+    rail.classList.add("registry-modal-returning");
+    window.setTimeout(() => rail.classList.remove("registry-modal-returning"), 500);
 }
 
 function renderActiveTagPills(mode) {
@@ -4056,7 +4129,7 @@ async function loadCategoriesAdmin() {
     });
 }
 
-function openTagModal(isSubCall = false, id = null, name = '') { isSubModalContextCall = isSubCall; editingTagTargetId = id; document.getElementById("tagModalTitle").textContent = id ? "Modify Tag Name" : "Add New Tag Label"; document.getElementById("tagModalInput").value = name; document.getElementById("centralTagModal").style.display = "flex"; }
+function openTagModal(isSubCall = false, id = null, name = '') { isSubModalContextCall = isSubCall; editingTagTargetId = id; document.getElementById("tagModalTitle").textContent = id ? "Modify Tag Name" : "Add New Tag Label"; document.getElementById("tagModalInput").value = name; setTagAlphabetRailModalState(true); document.getElementById("centralTagModal").style.display = "flex"; }
 
 async function saveCentralTag() { 
     const name = document.getElementById("tagModalInput").value.trim(); 

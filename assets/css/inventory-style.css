@@ -724,6 +724,12 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     min-height: 190px;
 }
 
+.tag-search-options.drag-armed,
+.tag-search-options.dragging {
+    border-color: #ff8c00;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.24), 0 0 0 3px rgba(255, 140, 0, 0.24);
+}
+
 .tag-search-options-header {
     display: flex;
     align-items: center;
@@ -734,8 +740,49 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
-    cursor: move;
+    cursor: grab;
     user-select: none;
+}
+
+.tag-search-options.dragging .tag-search-options-header {
+    cursor: grabbing;
+}
+
+.tag-alphabet-rail.registry-modal-open {
+    pointer-events: none;
+    animation: tagRailSlideOut 0.22s ease forwards;
+}
+
+.tag-alphabet-rail.registry-modal-returning {
+    animation: tagRailSlideIn 0.28s ease forwards;
+}
+
+.tag-alphabet-rail.registry-modal-returning button {
+    animation: tagRailLetterWhip 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.tag-alphabet-rail.registry-modal-returning button:nth-child(2) { animation-delay: 0.02s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(3) { animation-delay: 0.04s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(4) { animation-delay: 0.06s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(5) { animation-delay: 0.08s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(6) { animation-delay: 0.1s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(7) { animation-delay: 0.12s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(8) { animation-delay: 0.14s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(9) { animation-delay: 0.16s; }
+.tag-alphabet-rail.registry-modal-returning button:nth-child(n+10) { animation-delay: 0.18s; }
+
+@keyframes tagRailSlideOut {
+    to { transform: translateX(-120%); opacity: 0; }
+}
+
+@keyframes tagRailSlideIn {
+    from { transform: translateX(-120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes tagRailLetterWhip {
+    from { transform: translateX(-14px) scale(0.8); opacity: 0; }
+    to { transform: translateX(0) scale(1); opacity: 1; }
 }
 
 .tag-search-options-search {
