@@ -607,6 +607,7 @@ function closeModal(id) {
     document.getElementById(id).style.display = "none";
     if (id === "centralTagModal") setTagAlphabetRailModalState(false);
     document.body.classList.toggle("modal-active", !!document.querySelector('.modal[style*="display: flex"], .modal[style*="display:flex"], .modal[style*="display: block"], .modal[style*="display:block"]'));
+    updateTopNavVisibilityForOverlays();
     delete modalDirtySnapshots[id];
     if (id === "addLocationModal") {
         pendingLocationPickerAfterCreate = null;
@@ -619,6 +620,60 @@ function closeModal(id) {
 }
 async function confirmCancel(modalId) { await closeModalWithDirtyCheck(modalId); }
 async function withStatus(fn, label) { window.setStatus("syncing", label); try { const r = await fn(); window.setStatus("connected", "Connected"); return r; } catch (e) { window.setStatus("error", "Error"); throw e; } }
+
+function isAnyOverlayOpen() {
+    const modalOpen = Array.from(document.querySelectorAll(".modal")).some(modal => {
+        const display = modal.style.display || window.getComputedStyle(modal).display;
+        return display === "flex" || display === "block" || modal.classList.contains("open");
+    });
+    const lightbox = document.getElementById("review-lightbox");
+    const lightboxOpen = lightbox && (lightbox.style.display === "flex" || lightbox.classList.contains("open"));
+    return modalOpen || lightboxOpen;
+}
+
+function updateTopNavVisibilityForOverlays() {
+    document.body.classList.toggle("overlay-active", isAnyOverlayOpen());
+}
+
+function setModalSavingState(modalId, isSaving, label = "Saving") {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    const buttons = modal.querySelectorAll("button");
+    buttons.forEach(button => {
+        if (isSaving) {
+            if (button.dataset.savingManaged === "true") return;
+            button.dataset.savingManaged = "true";
+            button.dataset.originalDisabled = button.disabled ? "true" : "false";
+            button.disabled = true;
+            if (button.matches(".btn-primary") || button.getAttribute("onclick")?.includes("save") || button.getAttribute("onclick")?.includes("addItem")) {
+                button.dataset.originalHtml = button.innerHTML;
+                button.classList.add("is-saving");
+                button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span><span>${label}</span>`;
+            }
+        } else if (button.dataset.savingManaged === "true") {
+            button.disabled = button.dataset.originalDisabled === "true";
+            if (button.dataset.originalHtml !== undefined) button.innerHTML = button.dataset.originalHtml;
+            button.classList.remove("is-saving");
+            delete button.dataset.savingManaged;
+            delete button.dataset.originalDisabled;
+            delete button.dataset.originalHtml;
+        }
+    });
+}
+
+function installOverlayVisibilityObserver() {
+    if (window.fieldHubOverlayObserverInstalled) return;
+    window.fieldHubOverlayObserverInstalled = true;
+    const observer = new MutationObserver(updateTopNavVisibilityForOverlays);
+    if (document.body) observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["style", "class"] });
+    updateTopNavVisibilityForOverlays();
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installOverlayVisibilityObserver);
+} else {
+    installOverlayVisibilityObserver();
+}
 
 /* =========================================================
     AUDIT LOGGING ENGINE
@@ -1232,7 +1287,8 @@ async function refreshAllDataFromLocal() {
         globalCachedCategories = cData.sort((a,b) => a.name.localeCompare(b.name));
         
         const catHtml = globalCachedCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join("");
-        if (document.getElementById("itemCategorySelect")) document.getElementById("itemCategorySelect").innerHTML = catHtml; 
+        const addCatHtml = `<option value="">No Category Selected</option>${catHtml}`;
+        if (document.getElementById("itemCategorySelect")) document.getElementById("itemCategorySelect").innerHTML = addCatHtml;
         if (document.getElementById("editItemCategory")) document.getElementById("editItemCategory").innerHTML = catHtml;
         
         const tagHtml = '<option value="" selected disabled>Select a tag...</option>' + globalCachedTags.map(t => `<option value="${t.name}">${t.name}</option>`).join("");
@@ -1386,6 +1442,11 @@ function navigateToLocation(id) {
     currentLocationId = id; loadLocation(id);
 }
 
+function openAddLocationForCurrentItemFolder() {
+    currentLocationAdmin = currentLocationId && currentLocationId !== "unallocated" ? currentLocationId : null;
+    openAddLocationModal();
+}
+
 async function loadUnallocatedItems() {
     const container = document.getElementById("breadcrumb");
     if (container) container.innerHTML = `<span class="breadcrumb-link" onclick="loadRootLocations()">Items</span><span class="breadcrumb-separator"> > </span><span class="breadcrumb-link active">Unallocated Items</span>`;
@@ -1493,6 +1554,9 @@ function renderAssignedItems(items) {
         const selectedQty = stockUsageDraft.get(item.id) || 0;
         const qtyBadge = isEquipment ? "Tool" : `Qty: ${item.quantity}`;
         const actionHtml = isStockUsageModeActive
+            && isEquipment
+            ? `<div onclick="event.stopPropagation();" style="position:absolute; left:8px; right:8px; bottom:8px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:8px; z-index:10; color:#64748b; font-size:11px; font-weight:800; box-shadow:0 2px 8px rgba(0,0,0,0.08);">Tools cannot be used here</div>`
+            : isStockUsageModeActive
             ? `<div onclick="event.stopPropagation();" style="position:absolute; left:8px; right:8px; bottom:8px; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:8px; z-index:10; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
                     <div style="font-size:11px; font-weight:800; color:#c2410c; margin-bottom:6px;">Use quantity</div>
                     <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
@@ -1876,7 +1940,15 @@ function renderItems(items) {
             ? `Unable to find item: ${escapeHtml(searchTerm)}${exactLocationMatch ? `<br><span style="display:block; margin-top:6px;">${escapeHtml(exactLocationMatch.name)} is empty!</span>` : ""}`
             : `${escapeHtml(emptyName)} is empty!`;
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #999; padding: 30px; font-style: italic;">Empty directory context</td></tr>`;
-        container.style.display = "block"; container.innerHTML = `<div style="padding: 40px; text-align: center; color: #64748b; font-size: 16px; font-weight: 600; font-style: italic; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; margin-top: 10px;">${emptyMessage}</div>`;
+        const addLocationTile = currentLocationId && currentLocationId !== "unallocated"
+            ? `<button type="button" class="item-card location-card empty-add-location-tile" onclick="openAddLocationForCurrentItemFolder()">
+                    <div class="item-card-photo-wrapper empty-add-location-icon">+</div>
+                    <div class="item-card-qty-badge" style="background:#ff8c00;">Folder</div>
+                    <div class="item-card-name">Add new location</div>
+                </button>`
+            : "";
+        container.style.display = "grid";
+        container.innerHTML = addLocationTile || `<div style="padding: 40px; text-align: center; color: #64748b; font-size: 16px; font-weight: 600; font-style: italic; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; margin-top: 10px;">${emptyMessage}</div>`;
     } else {
         container.style.display = "grid";
         combinedList.forEach(row => {
@@ -2401,6 +2473,8 @@ function ensureEditItemLayout() {
 
 function openAddItemModal() { 
     ensureAddItemLayout();
+    lastNativeNfcToken = "";
+    lastNativeNfcAt = 0;
     setElementValue("itemName", "");
     setElementValue("itemQuantity", "1");
     setElementValue("itemDescription", "");
@@ -2410,11 +2484,14 @@ function openAddItemModal() {
     setElementValue("addItemCameraInput", "");
     const minimumOrder = document.getElementById("addItemMinimumOrder");
     if (minimumOrder) minimumOrder.value = "-";
+    setElementValue("itemCategorySelect", "");
     setAddItemEquipmentState(false);
     currentAddItemFiles = []; primaryPhotoIdentifier = null; renderMultipleFilesPreviews('addItemPreviewsRow', currentAddItemFiles, 'add-item');
     activeSelectedAddTags = []; renderActiveTagPills('add');
+    updateAddItemHardwareButtonsUI();
     const selectEl = document.getElementById("itemLocationSelect"); if (selectEl) setLocationSelectValue(selectEl, (currentLocationId && currentLocationId !== "unallocated") ? currentLocationId : "");
     document.getElementById("addItemModal").style.display = "flex"; 
+    updateTopNavVisibilityForOverlays();
     markModalClean("addItemModal");
 }
 
@@ -2490,6 +2567,7 @@ async function triggerAddItemNfcScan() {
 async function addItem(addAnother = false) {
     if (window.isProcessingTransaction) return;
     window.isProcessingTransaction = true;
+    setModalSavingState("addItemModal", true, addAnother ? "Saving" : "Saving");
 
     try {
         const name = document.getElementById("itemName").value;
@@ -2498,7 +2576,7 @@ async function addItem(addAnother = false) {
         const quantity_minimum_order = normaliseMinimumOrderValue(document.getElementById("addItemMinimumOrder")?.value);
         const location_id = document.getElementById("itemLocationSelect").value || null;
         const description = document.getElementById("itemDescription").value;
-        const category = document.getElementById("itemCategorySelect").value || 'tools';
+        const category = document.getElementById("itemCategorySelect").value || "";
         const barcode = document.getElementById("addItemBarcode").value;
         const nfc_tag = document.getElementById("addItemNFC").value;
 
@@ -2545,7 +2623,10 @@ async function addItem(addAnother = false) {
     } catch (err) {
         console.error("Add item failed:", err);
         await customAlert(`Item save failed: ${err.message || err}`, "Save Failed");
-    } finally { window.isProcessingTransaction = false; }
+    } finally {
+        window.isProcessingTransaction = false;
+        setModalSavingState("addItemModal", false);
+    }
 }
 async function switchToItemEdit() {
     if (!currentItemForActions) return;
@@ -2643,6 +2724,7 @@ async function saveItemEdits() {
     if (!isModalDirty("itemEditModal")) return await showNoChangesDialog("itemEditModal", "item");
     if (window.isProcessingTransaction) return;
     window.isProcessingTransaction = true;
+    setModalSavingState("itemEditModal", true, "Saving");
 
     try {
         if (!currentItemForActions || !currentItemForActions.id) return;
@@ -2690,7 +2772,10 @@ async function saveItemEdits() {
             }
             setTimeout(() => { lastMovedItemId = null; }, 6000);
         }
-    } finally { window.isProcessingTransaction = false; }
+    } finally {
+        window.isProcessingTransaction = false;
+        setModalSavingState("itemEditModal", false);
+    }
 }
 
 function openMoveItemModal() {
@@ -3147,6 +3232,7 @@ async function saveItemEdits() {
     if (!isModalDirty("itemEditModal")) return await showNoChangesDialog("itemEditModal", "item");
     if (window.isProcessingTransaction) return;
     window.isProcessingTransaction = true;
+    setModalSavingState("itemEditModal", true, "Saving");
 
     try {
         if (!currentItemForActions || !currentItemForActions.id) return;
@@ -3189,7 +3275,10 @@ async function saveItemEdits() {
     } catch (err) {
         console.error("Save item edits failed:", err);
         await customAlert(`Item update failed: ${err.message || err}`, "Save Failed");
-    } finally { window.isProcessingTransaction = false; }
+    } finally {
+        window.isProcessingTransaction = false;
+        setModalSavingState("itemEditModal", false);
+    }
 }
 
 // Intercept original scanner callback channels to hook hardware values into the modal elements
@@ -3436,8 +3525,8 @@ async function attemptDeleteTempLocation() {
     if (!error) { closeModal('tempLocationActionsModal'); logAction("DELETE", "Temp Location", loc.name, "Deleted assignee profile"); await syncAfterWrite(); loadTempLocationsAdmin(); }
 }
 
-function openLightbox() { if (!lightboxImages || lightboxImages.length === 0) return; document.getElementById("review-lightbox").style.display = "flex"; updateLightboxUI(); }
-function closeLightbox() { document.getElementById("review-lightbox").style.display = "none"; }
+function openLightbox() { if (!lightboxImages || lightboxImages.length === 0) return; document.getElementById("review-lightbox").style.display = "flex"; updateLightboxUI(); updateTopNavVisibilityForOverlays(); }
+function closeLightbox() { document.getElementById("review-lightbox").style.display = "none"; updateTopNavVisibilityForOverlays(); }
 function changeLightboxImage(direction) { lightboxIndex += direction; if (lightboxIndex < 0) lightboxIndex = lightboxImages.length - 1; if (lightboxIndex >= lightboxImages.length) lightboxIndex = 0; updateLightboxUI(); }
 function updateLightboxUI() { const imgEl = document.getElementById("lightbox-img"); const counterEl = document.getElementById("lightbox-counter"); if (imgEl && lightboxImages[lightboxIndex]) imgEl.src = lightboxImages[lightboxIndex]; if (counterEl) counterEl.textContent = `${lightboxIndex + 1} / ${lightboxImages.length}`; }
 
@@ -3599,7 +3688,14 @@ async function executeReturnItem(itemId, fromTempView = false) {
     }
 
     // 2. Map "Use Items" Jump Action
+    const useBtn = document.getElementById("returnModalUseBtn");
+    if (useBtn) {
+        useBtn.disabled = isEquipment;
+        useBtn.style.opacity = isEquipment ? "0.45" : "1";
+        useBtn.style.pointerEvents = isEquipment ? "none" : "auto";
+    }
     document.getElementById("returnModalUseBtn").onclick = () => {
+        if (isEquipment) return;
         closeModal('itemReturnModal');
         closeModal('itemDetailsModal');
         showPage('pageTempLocations');
@@ -3857,12 +3953,11 @@ function setupTagSearchInput(mode) {
 
     const wrapper = document.createElement("div");
     wrapper.className = "tag-search-wrapper";
-    const input = document.createElement("input");
-    input.type = "text";
-    input.id = mode === "add" ? "itemTagSearchInput" : "editItemTagSearchInput";
-    input.className = "tag-search-input";
-    input.placeholder = "Search tags...";
-    input.autocomplete = "off";
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.id = mode === "add" ? "itemTagPickerButton" : "editItemTagPickerButton";
+    trigger.className = "tag-picker-trigger";
+    trigger.textContent = "Select tags";
     const list = document.createElement("div");
     list.className = "tag-search-options";
     list.style.display = "none";
@@ -3882,7 +3977,7 @@ function setupTagSearchInput(mode) {
     const closeList = () => {
         saveFloatingPanelState(list);
         pickerSearch.blur();
-        input.blur();
+        trigger.blur();
         list.classList.remove("open");
         list.style.display = "none";
     };
@@ -3921,11 +4016,11 @@ function setupTagSearchInput(mode) {
             empty.textContent = "No tags found";
             listGrid.appendChild(empty);
         }
-        const modalRect = input.closest(".modal-content")?.getBoundingClientRect();
+        const modalRect = trigger.closest(".modal-content")?.getBoundingClientRect();
         const viewport = window.visualViewport;
         const viewportTop = viewport?.offsetTop || 0;
         const viewportHeight = viewport?.height || window.innerHeight;
-        const targetWidth = modalRect?.width || input.getBoundingClientRect().width;
+        const targetWidth = modalRect?.width || trigger.getBoundingClientRect().width;
         list.style.left = "50%";
         list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
         list.style.transform = "translateX(-50%)";
@@ -3937,19 +4032,17 @@ function setupTagSearchInput(mode) {
         list.classList.add("open");
     };
 
-    input.addEventListener("focus", () => {
+    trigger.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         pickerSearch.value = "";
-        renderOptions();
-    });
-    input.addEventListener("input", () => {
-        pickerSearch.value = input.value;
         renderOptions();
     });
     pickerSearch.addEventListener("input", renderOptions);
     document.addEventListener("pointerdown", event => {
         if (!wrapper.contains(event.target) && !list.contains(event.target)) closeList();
     });
-    wrapper.append(input, list);
+    wrapper.append(trigger, list);
     select.parentElement.insertBefore(wrapper, select);
 }
 
@@ -4082,9 +4175,16 @@ function setTagAlphabetRailModalState(isOpen) {
 
 function renderActiveTagPills(mode) {
     const container = document.getElementById(mode === 'add' ? "addItemTagsPillsRow" : "editItemTagsPillsRow"); const targetArray = mode === 'add' ? activeSelectedAddTags : activeSelectedEditTags;
+    if (!container) return;
+    container.className = "item-form-tag-pills-row";
+    container.style.display = "flex";
+    container.style.flexWrap = "wrap";
+    container.style.gap = "6px";
+    container.style.marginTop = "8px";
+    container.style.marginBottom = "10px";
     container.innerHTML = "";
     targetArray.forEach(tag => {
-        const pill = document.createElement("span"); pill.className = "tag-pill"; pill.style.cssText = "display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; border-color:#bae6fd; color:#0369a1;";
+        const pill = document.createElement("span"); pill.className = "tag-pill item-form-tag-pill"; pill.style.cssText = "display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; border-color:#bae6fd; color:#0369a1;";
         pill.innerHTML = `${tag} <b style="cursor:pointer; color:#ef4444;">&times;</b>`; pill.querySelector("b").onclick = () => removeSelectedTagBadge(mode, tag); container.appendChild(pill);
     });
 }
@@ -5372,6 +5472,11 @@ function setStockUsageQuantity(itemId, qty) {
     const inputQty = Math.max(0, parseInt(qty, 10) || 0);
     localDB.items.get(itemId).then(item => {
         if (!item) return;
+        if (String(item.quantity).trim() === "-") {
+            stockUsageDraft.delete(itemId);
+            if (currentTempLocationId) loadTempLocationDetails(currentTempLocationId);
+            return;
+        }
         const maxQty = String(item.quantity).trim() === "-" ? 1 : Math.max(1, parseInt(item.quantity, 10) || 1);
         const finalQty = Math.min(inputQty, maxQty);
         if (finalQty <= 0) stockUsageDraft.delete(itemId);
@@ -5405,6 +5510,7 @@ async function confirmStockUsageChanges() {
             if (!item || String(item.assigned_to) !== String(currentTempLocationId)) continue;
 
             const isEquipment = String(item.quantity).trim() === "-";
+            if (isEquipment) continue;
             const currentQty = isEquipment ? 1 : Math.max(1, parseInt(item.quantity, 10) || 1);
             const qtyToUse = isEquipment ? 1 : Math.min(currentQty, Math.max(1, parseInt(requestedQty, 10) || 1));
             const remainingQty = currentQty - qtyToUse;
@@ -5594,8 +5700,8 @@ async function closeItemDetailsModal() {
     setTimeout(() => { lastMovedItemId = null; }, 6000);
 }
 
-function openLightbox() { if (!lightboxImages || lightboxImages.length === 0) return; document.getElementById("review-lightbox").style.display = "flex"; updateLightboxUI(); }
-function closeLightbox() { document.getElementById("review-lightbox").style.display = "none"; }
+function openLightbox() { if (!lightboxImages || lightboxImages.length === 0) return; document.getElementById("review-lightbox").style.display = "flex"; updateLightboxUI(); updateTopNavVisibilityForOverlays(); }
+function closeLightbox() { document.getElementById("review-lightbox").style.display = "none"; updateTopNavVisibilityForOverlays(); }
 function changeLightboxImage(direction) { lightboxIndex += direction; if (lightboxIndex < 0) lightboxIndex = lightboxImages.length - 1; if (lightboxIndex >= lightboxImages.length) lightboxIndex = 0; updateLightboxUI(); }
 function updateLightboxUI() { const imgEl = document.getElementById("lightbox-img"); const counterEl = document.getElementById("lightbox-counter"); if (imgEl && lightboxImages[lightboxIndex]) imgEl.src = lightboxImages[lightboxIndex]; if (counterEl) counterEl.textContent = `${lightboxIndex + 1} / ${lightboxImages.length}`; }
 // Local strings to store assets during layout transitions inside the edit panel view context
