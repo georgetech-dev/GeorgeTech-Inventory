@@ -112,6 +112,46 @@ body.modal-active .fab-container {
 .inventory-page { display: none; }
 .inventory-page.active { display: block; }
 
+body { overflow-x: hidden; }
+
+.inventory-page.swipe-page-out {
+    display: block !important;
+    position: fixed !important;
+    top: var(--swipe-page-top) !important;
+    left: var(--swipe-page-left) !important;
+    width: var(--swipe-page-width) !important;
+    z-index: 20;
+    pointer-events: none;
+    animation-duration: 0.3s;
+    animation-timing-function: cubic-bezier(.32,.72,0,1);
+    animation-fill-mode: forwards;
+}
+
+.inventory-page.swipe-page-in {
+    animation-duration: 0.3s;
+    animation-timing-function: cubic-bezier(.32,.72,0,1);
+    animation-fill-mode: both;
+}
+
+.swipe-out-left { animation-name: pageSwipeOutLeft; }
+.swipe-out-right { animation-name: pageSwipeOutRight; }
+.swipe-in-right { animation-name: pageSwipeInRight; }
+.swipe-in-left { animation-name: pageSwipeInLeft; }
+
+@keyframes pageSwipeOutLeft { to { transform: translateX(-105%); opacity: 0.7; } }
+@keyframes pageSwipeOutRight { to { transform: translateX(105%); opacity: 0.7; } }
+@keyframes pageSwipeInRight { from { transform: translateX(105%); opacity: 0.7; } to { transform: translateX(0); opacity: 1; } }
+@keyframes pageSwipeInLeft { from { transform: translateX(-105%); opacity: 0.7; } to { transform: translateX(0); opacity: 1; } }
+
+.settings-tab-content.settings-swipe-out-left { animation: settingsSwipeOutLeft 0.14s ease forwards; }
+.settings-tab-content.settings-swipe-out-right { animation: settingsSwipeOutRight 0.14s ease forwards; }
+.settings-tab-content.settings-swipe-in-right { animation: settingsSwipeInRight 0.22s ease both; }
+.settings-tab-content.settings-swipe-in-left { animation: settingsSwipeInLeft 0.22s ease both; }
+@keyframes settingsSwipeOutLeft { to { transform: translateX(-32px); opacity: 0; } }
+@keyframes settingsSwipeOutRight { to { transform: translateX(32px); opacity: 0; } }
+@keyframes settingsSwipeInRight { from { transform: translateX(32px); opacity: 0; } }
+@keyframes settingsSwipeInLeft { from { transform: translateX(-32px); opacity: 0; } }
+
 /* =========================================================
    2. APP HEADER & NAVIGATION
 ========================================================= */
@@ -644,6 +684,18 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
 }
 
 .photo-camera-header h3 { margin: 0; color: #ffffff; }
+.photo-camera-close {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    font-size: 38px;
+    line-height: 1;
+    cursor: pointer;
+}
 .photo-camera-stage { position: relative; width: 100%; background: #000000; border-radius: 8px; overflow: hidden; }
 .photo-camera-stage video {
     display: block;
@@ -1916,6 +1968,22 @@ body:has(.modal[style*="display:block"]) {
     gap: 6px !important;
     margin-top: 8px !important;
     margin-bottom: 10px !important;
+    max-height: 240px;
+    opacity: 1;
+    transform: translateY(0);
+    overflow: visible;
+    transition: max-height 0.28s ease, opacity 0.2s ease, transform 0.28s ease, margin 0.28s ease;
+}
+
+.inventory-form-row.inventory-form-row-collapsed {
+    max-height: 0 !important;
+    min-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    opacity: 0;
+    transform: translateY(-10px);
+    overflow: hidden;
+    pointer-events: none;
 }
 
 .item-form-tag-pill {

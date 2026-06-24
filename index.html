@@ -345,27 +345,13 @@
     </div>
 
     <div class="settings-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; overflow-x: auto; padding-bottom: 5px;">
-        <button class="s-tab active" onclick="showSettingsTab('settings-camera', this)"><div class="icon icon-camera-duotone"></div> Camera</button>
+        <button class="s-tab active" onclick="showSettingsTab('settings-diagnostics', this)"><div class="icon icon-scan-duotone"></div> Diagnostics</button>
         <button class="s-tab" onclick="showSettingsTab('settings-backups', this)"><div class="icon icon-cloud-arrow-up-duotone"></div> Backups</button>
         <button class="s-tab" onclick="showSettingsTab('settings-reports', this)"><div class="icon icon-chart-line-up-duotone"></div> Reports</button>
         <button class="s-tab" onclick="showSettingsTab('settings-logs', this)"><div class="icon icon-notepad-duotone"></div> Logs</button>
     </div>
 
-    <div id="settings-camera" class="settings-tab-content">
-        <div class="item-card" style="text-align: left; padding: 25px; border: 1px solid #cbd5e1;">
-            <h3 style="margin-top: 0; color: #004a99; font-size: 20px;"><div class="icon icon-camera-duotone"></div>  Camera Zoom Settings</h3>
-            <p style="font-size: 14px; color: #475569; margin-bottom: 20px;">Prioritise camera lenses and apply hardware macro zoom capabilities.</p>
-            <div style="margin-bottom: 15px;">
-                <label style="display:block; font-size:12px; font-weight:bold; margin-bottom:5px; color:#475569;">Default System Camera Lens:</label>
-                <select id="settingsDefaultCamera" onchange="saveHardwarePreferences()" style="width:100%; height:40px; font-size:13px; margin-bottom:0;">
-                    <option value="AUTO_REAR">Auto-Select Main Rear Lens</option>
-                </select>
-            </div>
-            <div>
-                <label style="display:block; font-size:12px; font-weight:bold; margin-bottom:5px; color:#475569;">Macro Zoom: <span id="settingsZoomValDisplay" style="color:#004a99; font-weight:800;">1.5x</span></label>
-                <input type="range" id="settingsDefaultZoom" min="1.0" max="4.0" step="0.1" value="1.5" oninput="document.getElementById('settingsZoomValDisplay').textContent = this.value + 'x'; saveHardwarePreferences();" style="width:100%;">
-            </div>
-        </div>
+    <div id="settings-diagnostics" class="settings-tab-content">
         <div class="item-card" style="text-align: left; padding: 25px; border: 1px solid #bbf7d0; margin-top: 16px;">
             <h3 style="margin-top: 0; color: #065f46; font-size: 20px;">NFC Diagnostics</h3>
             <p style="font-size: 14px; color: #475569; margin-bottom: 14px;">Test NFC without starting the camera. This shows whether native Android and the WebView bridge are seeing the tag.</p>
@@ -1203,7 +1189,7 @@
                      <span>Inventory</span>
                 </div>
                 <span>FieldHub &copy; 2026</span>
-                <span class="inventory-footer-version">Build v2026.06.24-gemini1</span>
+                <span class="inventory-footer-version">Build v2026.06.24-swipe1</span>
             </div>
             <div class="inventory-footer-support">
                 <span>For support:</span>
@@ -1324,15 +1310,51 @@
 
         let lastActivePageId = null;
         const mainTabOrder = ["pageItems", "pageLocations", "pageTempLocations", "pageTags", "pageCategories", "pageSettings"];
-        const settingsTabOrder = ["settings-camera", "settings-backups", "settings-reports", "settings-logs"];
+        const settingsTabOrder = ["settings-diagnostics", "settings-backups", "settings-reports", "settings-logs"];
         let swipeStartX = 0;
         let swipeStartY = 0;
         let swipeStartTarget = null;
 
+        function isSwipeNavigationExcluded(target) {
+            return !!target.closest(".modal, input, textarea, select, button, .custom-select-wrapper, .tag-search-options, .settings-tabs, .inventory-nav-bar, .items-table-wrapper, .custom-table, .view-thumb-strip, [data-horizontal-scroll], [style*='overflow-x: auto'], [style*='overflow-x:auto']");
+        }
+
+        function animateMainPageSwipe(nextPageId, direction) {
+            const currentPage = document.querySelector(".inventory-page.active");
+            if (!currentPage || currentPage.id === nextPageId) return;
+            const rect = currentPage.getBoundingClientRect();
+            currentPage.style.setProperty("--swipe-page-top", `${rect.top}px`);
+            currentPage.style.setProperty("--swipe-page-left", `${rect.left}px`);
+            currentPage.style.setProperty("--swipe-page-width", `${rect.width}px`);
+            currentPage.classList.add("swipe-page-out", direction === "left" ? "swipe-out-left" : "swipe-out-right");
+            showPage(nextPageId);
+            const nextPage = document.getElementById(nextPageId);
+            nextPage?.classList.add("swipe-page-in", direction === "left" ? "swipe-in-right" : "swipe-in-left");
+            window.setTimeout(() => {
+                currentPage.classList.remove("swipe-page-out", "swipe-out-left", "swipe-out-right");
+                currentPage.style.removeProperty("--swipe-page-top");
+                currentPage.style.removeProperty("--swipe-page-left");
+                currentPage.style.removeProperty("--swipe-page-width");
+                nextPage?.classList.remove("swipe-page-in", "swipe-in-right", "swipe-in-left");
+            }, 320);
+        }
+
+        function animateSettingsSwipe(nextId, nextButton, direction) {
+            const current = document.querySelector(".settings-tab-content:not([style*='display: none'])");
+            if (current) current.classList.add(direction === "left" ? "settings-swipe-out-left" : "settings-swipe-out-right");
+            window.setTimeout(() => {
+                showSettingsTab(nextId, nextButton);
+                const next = document.getElementById(nextId);
+                next?.classList.add(direction === "left" ? "settings-swipe-in-right" : "settings-swipe-in-left");
+                window.setTimeout(() => next?.classList.remove("settings-swipe-in-right", "settings-swipe-in-left"), 240);
+                current?.classList.remove("settings-swipe-out-left", "settings-swipe-out-right");
+            }, 140);
+        }
+
         function setupSwipeNavigation() {
             document.addEventListener("touchstart", event => {
                 if (event.touches.length !== 1) return;
-                if (event.target.closest(".modal, input, textarea, select, button, .custom-select-wrapper, .tag-search-options, .settings-tabs, .inventory-nav-bar")) return;
+                if (isSwipeNavigationExcluded(event.target)) return;
                 swipeStartX = event.touches[0].clientX;
                 swipeStartY = event.touches[0].clientY;
                 swipeStartTarget = event.target;
@@ -1346,18 +1368,18 @@
                 if (Math.abs(deltaX) < 70 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) return;
 
                 if (document.getElementById("pageSettings")?.classList.contains("active")) {
-                    const activeSettings = document.querySelector(".settings-tab-content:not([style*='display: none'])") || document.getElementById("settings-camera");
+                    const activeSettings = document.querySelector(".settings-tab-content:not([style*='display: none'])") || document.getElementById("settings-diagnostics");
                     const currentIndex = settingsTabOrder.indexOf(activeSettings?.id);
                     const nextId = settingsTabOrder[currentIndex + (deltaX < 0 ? 1 : -1)];
                     const nextButton = nextId ? document.querySelector(`.settings-tabs .s-tab[onclick*="${nextId}"]`) : null;
-                    if (nextId && nextButton) showSettingsTab(nextId, nextButton);
+                    if (nextId && nextButton) animateSettingsSwipe(nextId, nextButton, deltaX < 0 ? "left" : "right");
                     return;
                 }
 
                 const activePage = document.querySelector(".inventory-page.active");
                 const currentIndex = mainTabOrder.indexOf(activePage?.id);
                 const nextPage = mainTabOrder[currentIndex + (deltaX < 0 ? 1 : -1)];
-                if (nextPage) showPage(nextPage);
+                if (nextPage) animateMainPageSwipe(nextPage, deltaX < 0 ? "left" : "right");
             }, { passive: true });
         }
 

@@ -380,7 +380,10 @@ function setYesNoToggleLabels(button) {
 
 function setRowHiddenByControl(control, hidden) {
     const row = control?.closest(".inventory-form-row");
-    if (row) row.style.display = hidden ? "none" : "";
+    if (!row) return;
+    row.classList.toggle("inventory-form-row-collapsed", hidden);
+    row.setAttribute("aria-hidden", hidden ? "true" : "false");
+    if ("inert" in row) row.inert = hidden;
 }
 
 function ensureInput(id, parent) {
@@ -2106,6 +2109,7 @@ let photoRuntimeCameraId = null;
 let photoRuntimeZoom = 1;
 let photoSettingsDirty = false;
 let photoFlashMode = "off";
+let photoFacingMode = "environment";
 
 function getVideoTrackFromElement(video) {
     return video?.srcObject?.getVideoTracks?.()[0] || null;
@@ -2125,6 +2129,23 @@ async function applyTrackZoom(track, requestedZoom) {
     return zoom;
 }
 
+async function applyCameraZoom(video, requestedZoom) {
+    if (!video) return 1;
+    const track = getVideoTrackFromElement(video);
+    const caps = track?.getCapabilities?.() || {};
+    const requested = Math.max(1, Math.min(4, Number(requestedZoom) || 1));
+    if (caps.zoom) {
+        const zoom = await applyTrackZoom(track, requested);
+        video.style.transform = "none";
+        video.dataset.digitalZoom = "1";
+        return zoom;
+    }
+    video.style.transformOrigin = "center center";
+    video.style.transform = `scale(${requested})`;
+    video.dataset.digitalZoom = String(requested);
+    return requested;
+}
+
 function installPinchZoom(video, onZoom) {
     if (!video || video.dataset.pinchZoomReady === "true") return;
     video.dataset.pinchZoomReady = "true";
@@ -2132,17 +2153,49 @@ function installPinchZoom(video, onZoom) {
     let startZoom = 1;
     const distance = touches => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
     video.addEventListener("touchstart", event => {
+        if ("PointerEvent" in window) return;
         if (event.touches.length !== 2) return;
         startDistance = distance(event.touches);
         startZoom = Number(video.dataset.currentZoom) || 1;
         event.preventDefault();
     }, { passive: false });
     video.addEventListener("touchmove", event => {
+        if ("PointerEvent" in window) return;
         if (event.touches.length !== 2 || !startDistance) return;
         onZoom(startZoom * (distance(event.touches) / startDistance));
         event.preventDefault();
     }, { passive: false });
-    video.addEventListener("touchend", () => { startDistance = 0; }, { passive: true });
+    video.addEventListener("touchend", () => { if (!("PointerEvent" in window)) startDistance = 0; }, { passive: true });
+
+    const activePointers = new Map();
+    let pointerStartDistance = 0;
+    let pointerStartZoom = 1;
+    const pointerDistance = () => {
+        const points = Array.from(activePointers.values());
+        return points.length < 2 ? 0 : Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    };
+    video.addEventListener("pointerdown", event => {
+        activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        video.setPointerCapture?.(event.pointerId);
+        if (activePointers.size === 2) {
+            pointerStartDistance = pointerDistance();
+            pointerStartZoom = Number(video.dataset.currentZoom) || 1;
+        }
+    });
+    video.addEventListener("pointermove", event => {
+        if (!activePointers.has(event.pointerId)) return;
+        activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (activePointers.size === 2 && pointerStartDistance) {
+            onZoom(pointerStartZoom * (pointerDistance() / pointerStartDistance));
+            event.preventDefault();
+        }
+    });
+    const releasePointer = event => {
+        activePointers.delete(event.pointerId);
+        if (activePointers.size < 2) pointerStartDistance = 0;
+    };
+    video.addEventListener("pointerup", releasePointer);
+    video.addEventListener("pointercancel", releasePointer);
 }
 
 async function setTrackTorch(track, enabled) {
@@ -2166,12 +2219,12 @@ function ensurePhotoCaptureModal() {
     modal.style.zIndex = "10020";
     modal.innerHTML = `
         <div class="modal-content photo-camera-modal-content">
-            <div class="photo-camera-header"><h3>Camera Photo</h3><button type="button" class="camera-icon-btn" onclick="closePhotoCaptureModal()" aria-label="Close">&times;</button></div>
+            <div class="photo-camera-header"><h3>Camera Photo</h3><button type="button" class="photo-camera-close" onclick="closePhotoCaptureModal()" aria-label="Close">&times;</button></div>
             <div class="photo-camera-stage">
                 <video id="photoCaptureVideo" autoplay playsinline muted></video>
                 <canvas id="photoCaptureCanvas" style="display:none;"></canvas>
                 <div class="photo-camera-toolbar">
-                    <button type="button" class="camera-icon-btn" onclick="switchPhotoCamera()" aria-label="Change camera"><img src="assets/icons/camera.svg" alt=""></button>
+                    <button type="button" class="camera-icon-btn" onclick="switchPhotoCamera()" aria-label="Switch front or back camera" title="Switch front/back camera"><img src="assets/icons/camera.svg" alt=""><span>Flip</span></button>
                     <button type="button" id="photoFlashButton" class="camera-icon-btn" onclick="cyclePhotoFlashMode()" aria-label="Flash off"><img src="assets/icons/lightning-slash.svg" alt=""><span>Off</span></button>
                     <button type="button" class="photo-shutter-btn" onclick="capturePhotoFromDevice()" aria-label="Take photo"><img src="assets/icons/aperture.svg" alt=""></button>
                     <button type="button" id="photoSaveSettingsButton" class="camera-save-btn" onclick="savePhotoCameraSettings()" style="display:none;">Save settings</button>
@@ -2216,7 +2269,8 @@ async function openPhotoCaptureModal(mode) {
         await video.play();
         const track = getVideoTrackFromElement(video);
         photoRuntimeCameraId = track?.getSettings?.().deviceId || photoRuntimeCameraId;
-        photoRuntimeZoom = await applyTrackZoom(track, photoRuntimeZoom);
+        photoFacingMode = track?.getSettings?.().facingMode || photoFacingMode;
+        photoRuntimeZoom = await applyCameraZoom(video, photoRuntimeZoom);
         video.dataset.currentZoom = photoRuntimeZoom;
         installPinchZoom(video, setPhotoCameraZoom);
         updatePhotoCameraControls();
@@ -2285,10 +2339,16 @@ async function capturePhotoFromDevice() {
     canvas.height = height;
     const track = getVideoTrackFromElement(video);
     if (photoFlashMode === "flash") {
-        await setTrackTorch(track, true);
-        await new Promise(resolve => setTimeout(resolve, 180));
+        const flashed = await setTrackTorch(track, true);
+        if (!flashed) await customAlert("Flash is not available on the selected camera.", "Flash Unavailable");
+        await new Promise(resolve => setTimeout(resolve, 350));
     }
-    canvas.getContext("2d").drawImage(video, 0, 0, width, height);
+    const digitalZoom = Math.max(1, Number(video.dataset.digitalZoom) || 1);
+    const sourceWidth = width / digitalZoom;
+    const sourceHeight = height / digitalZoom;
+    const sourceX = (width - sourceWidth) / 2;
+    const sourceY = (height - sourceHeight) / 2;
+    canvas.getContext("2d").drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
     if (photoFlashMode === "flash") await setTrackTorch(track, false);
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
@@ -2730,26 +2790,32 @@ function openAddItemModal() {
 
 async function setPhotoCameraZoom(value) {
     const video = document.getElementById("photoCaptureVideo");
-    photoRuntimeZoom = await applyTrackZoom(getVideoTrackFromElement(video), value);
+    photoRuntimeZoom = await applyCameraZoom(video, value);
     if (video) video.dataset.currentZoom = photoRuntimeZoom;
     photoSettingsDirty = true;
     updatePhotoCameraControls();
 }
 
 async function switchPhotoCamera() {
-    const devices = await getOrFetchCameras();
-    if (!devices?.length) return;
-    const currentIndex = devices.findIndex(device => String(device.id) === String(photoRuntimeCameraId));
-    photoRuntimeCameraId = devices[(currentIndex + 1 + devices.length) % devices.length].id;
+    photoFacingMode = photoFacingMode === "user" ? "environment" : "user";
     photoSettingsDirty = true;
     stopPhotoCaptureStream();
     const video = document.getElementById("photoCaptureVideo");
-    photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: photoRuntimeCameraId } }, audio: false });
-    video.srcObject = photoCaptureStream;
-    await video.play();
-    photoRuntimeZoom = await applyTrackZoom(getVideoTrackFromElement(video), photoRuntimeZoom);
-    video.dataset.currentZoom = photoRuntimeZoom;
-    updatePhotoCameraControls();
+    try {
+        photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: photoFacingMode } }, audio: false });
+        video.srcObject = photoCaptureStream;
+        await video.play();
+        const track = getVideoTrackFromElement(video);
+        photoRuntimeCameraId = track?.getSettings?.().deviceId || "AUTO_REAR";
+        photoFacingMode = track?.getSettings?.().facingMode || photoFacingMode;
+        photoRuntimeZoom = await applyCameraZoom(video, photoRuntimeZoom);
+        video.dataset.currentZoom = photoRuntimeZoom;
+        updatePhotoCameraControls();
+    } catch (error) {
+        photoFacingMode = photoFacingMode === "user" ? "environment" : "user";
+        await customAlert("This device did not provide the requested front/back camera.", "Camera Unavailable");
+        await openPhotoCaptureModal(photoCaptureMode);
+    }
 }
 
 async function cyclePhotoFlashMode() {
@@ -2757,7 +2823,10 @@ async function cyclePhotoFlashMode() {
     photoFlashMode = modes[(modes.indexOf(photoFlashMode) + 1) % modes.length];
     const track = getVideoTrackFromElement(document.getElementById("photoCaptureVideo"));
     const supported = await setTrackTorch(track, photoFlashMode === "on");
-    if (!supported) photoFlashMode = "off";
+    if (!supported) {
+        photoFlashMode = "off";
+        await customAlert("Flash is not available on the selected camera. Try the rear camera.", "Flash Unavailable");
+    }
     updatePhotoCameraControls();
 }
 
@@ -4812,8 +4881,7 @@ window.applyDynamicZoom = async function(val, markDirty = true) {
     const container = document.getElementById("scannerReaderContainer");
     if (!container) return;
     const videoEl = container.querySelector("video");
-    const track = getVideoTrackFromElement(videoEl);
-    scannerRuntimeZoom = await applyTrackZoom(track, val);
+    scannerRuntimeZoom = await applyCameraZoom(videoEl, val);
     if (videoEl) videoEl.dataset.currentZoom = scannerRuntimeZoom;
     if (display) display.textContent = `${Number(scannerRuntimeZoom).toFixed(1)}x - pinch to zoom`;
     if (markDirty) scannerSettingsDirty = true;
