@@ -49,7 +49,9 @@ let userSettings = {
     columns: { name: true, quantity: true, barcode: true, nfc: true, category: true, tags: true },
     widths: { name: '25%', quantity: '10%', barcode: '15%', nfc: '15%', category: '15%', tags: '20%' },
     defaultCameraId: 'AUTO_REAR',
-    defaultZoom: 1.5
+    defaultZoom: 1.5,
+    photoCameraId: 'AUTO_REAR',
+    photoZoom: 1
 };
 
 function buildLocationPath(id) {
@@ -2100,6 +2102,59 @@ function previewTempLocationImage(input, previewId, mode) {
 
 let photoCaptureStream = null;
 let photoCaptureMode = null;
+let photoRuntimeCameraId = null;
+let photoRuntimeZoom = 1;
+let photoSettingsDirty = false;
+let photoFlashMode = "off";
+
+function getVideoTrackFromElement(video) {
+    return video?.srcObject?.getVideoTracks?.()[0] || null;
+}
+
+function clampCameraZoom(track, requestedZoom) {
+    const caps = track?.getCapabilities?.() || {};
+    if (!caps.zoom) return 1;
+    return Math.max(caps.zoom.min, Math.min(caps.zoom.max, Number(requestedZoom) || caps.zoom.min));
+}
+
+async function applyTrackZoom(track, requestedZoom) {
+    if (!track) return 1;
+    const zoom = clampCameraZoom(track, requestedZoom);
+    const caps = track.getCapabilities?.() || {};
+    if (caps.zoom) await track.applyConstraints({ advanced: [{ zoom }] });
+    return zoom;
+}
+
+function installPinchZoom(video, onZoom) {
+    if (!video || video.dataset.pinchZoomReady === "true") return;
+    video.dataset.pinchZoomReady = "true";
+    let startDistance = 0;
+    let startZoom = 1;
+    const distance = touches => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    video.addEventListener("touchstart", event => {
+        if (event.touches.length !== 2) return;
+        startDistance = distance(event.touches);
+        startZoom = Number(video.dataset.currentZoom) || 1;
+        event.preventDefault();
+    }, { passive: false });
+    video.addEventListener("touchmove", event => {
+        if (event.touches.length !== 2 || !startDistance) return;
+        onZoom(startZoom * (distance(event.touches) / startDistance));
+        event.preventDefault();
+    }, { passive: false });
+    video.addEventListener("touchend", () => { startDistance = 0; }, { passive: true });
+}
+
+async function setTrackTorch(track, enabled) {
+    const caps = track?.getCapabilities?.() || {};
+    if (!caps.torch) return false;
+    try {
+        await track.applyConstraints({ advanced: [{ torch: !!enabled }] });
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 function ensurePhotoCaptureModal() {
     let modal = document.getElementById("photoCaptureModal");
@@ -2110,13 +2165,18 @@ function ensurePhotoCaptureModal() {
     modal.className = "modal";
     modal.style.zIndex = "10020";
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 460px; text-align: center;">
-            <h3 style="margin-top:0; color:#004a99;">Camera Photo</h3>
-            <video id="photoCaptureVideo" autoplay playsinline muted style="width:100%; max-height:360px; background:#111; border-radius:12px; object-fit:cover;"></video>
-            <canvas id="photoCaptureCanvas" style="display:none;"></canvas>
-            <div class="modal-buttons" style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
-                <button class="btn-outline" onclick="closePhotoCaptureModal()">Cancel</button>
-                <button class="btn-primary" onclick="capturePhotoFromDevice()">Use Photo</button>
+        <div class="modal-content photo-camera-modal-content">
+            <div class="photo-camera-header"><h3>Camera Photo</h3><button type="button" class="camera-icon-btn" onclick="closePhotoCaptureModal()" aria-label="Close">&times;</button></div>
+            <div class="photo-camera-stage">
+                <video id="photoCaptureVideo" autoplay playsinline muted></video>
+                <canvas id="photoCaptureCanvas" style="display:none;"></canvas>
+                <div class="photo-camera-toolbar">
+                    <button type="button" class="camera-icon-btn" onclick="switchPhotoCamera()" aria-label="Change camera"><img src="assets/icons/camera.svg" alt=""></button>
+                    <button type="button" id="photoFlashButton" class="camera-icon-btn" onclick="cyclePhotoFlashMode()" aria-label="Flash off"><img src="assets/icons/lightning-slash.svg" alt=""><span>Off</span></button>
+                    <button type="button" class="photo-shutter-btn" onclick="capturePhotoFromDevice()" aria-label="Take photo"><img src="assets/icons/aperture.svg" alt=""></button>
+                    <button type="button" id="photoSaveSettingsButton" class="camera-save-btn" onclick="savePhotoCameraSettings()" style="display:none;">Save settings</button>
+                </div>
+                <div id="photoZoomReadout" class="camera-zoom-readout">Pinch to zoom</div>
             </div>
             <button class="btn-outline" onclick="fallbackPhotoFilePicker()" style="width:100%; margin-top:10px;">Choose file instead</button>
         </div>
@@ -2140,12 +2200,26 @@ async function openPhotoCaptureModal(mode) {
 
     try {
         stopPhotoCaptureStream();
+        photoRuntimeCameraId = userSettings.photoCameraId || "AUTO_REAR";
+        photoRuntimeZoom = Number(userSettings.photoZoom) || 1;
+        photoSettingsDirty = false;
+        photoFlashMode = "off";
+        updatePhotoCameraControls();
+        const videoConstraint = photoRuntimeCameraId && photoRuntimeCameraId !== "AUTO_REAR"
+            ? { deviceId: { exact: photoRuntimeCameraId } }
+            : { facingMode: { ideal: "environment" } };
         photoCaptureStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: "environment" } },
+            video: videoConstraint,
             audio: false
         });
         video.srcObject = photoCaptureStream;
         await video.play();
+        const track = getVideoTrackFromElement(video);
+        photoRuntimeCameraId = track?.getSettings?.().deviceId || photoRuntimeCameraId;
+        photoRuntimeZoom = await applyTrackZoom(track, photoRuntimeZoom);
+        video.dataset.currentZoom = photoRuntimeZoom;
+        installPinchZoom(video, setPhotoCameraZoom);
+        updatePhotoCameraControls();
     } catch (error) {
         console.warn("Device camera unavailable, falling back to file picker:", error);
         closePhotoCaptureModal();
@@ -2209,7 +2283,13 @@ async function capturePhotoFromDevice() {
     const height = video.videoHeight || 720;
     canvas.width = width;
     canvas.height = height;
+    const track = getVideoTrackFromElement(video);
+    if (photoFlashMode === "flash") {
+        await setTrackTorch(track, true);
+        await new Promise(resolve => setTimeout(resolve, 180));
+    }
     canvas.getContext("2d").drawImage(video, 0, 0, width, height);
+    if (photoFlashMode === "flash") await setTrackTorch(track, false);
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob) return;
@@ -2241,6 +2321,157 @@ function normaliseQuantityWrapper(wrapper) {
     if (!nestedControl) return;
     Array.from(nestedControl.childNodes).forEach(child => wrapper.appendChild(child));
     nestedControl.remove();
+}
+
+let aiDescriptionImageChoices = [];
+let aiDescriptionSelectedIndex = 0;
+let aiDescriptionTargetMode = "add";
+
+function makeAiDescriptionControl(mode, textarea) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "item-ai-description-control";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn-outline item-ai-description-button";
+    button.textContent = "Generate from photo";
+    button.onclick = () => openAiDescriptionModal(mode);
+    wrapper.append(textarea, button);
+    return wrapper;
+}
+
+function ensureAiDescriptionModal() {
+    let modal = document.getElementById("aiDescriptionModal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "aiDescriptionModal";
+    modal.className = "modal";
+    modal.style.zIndex = "10020";
+    modal.innerHTML = `
+        <div class="modal-content ai-description-modal-content">
+            <div class="ai-description-header"><h3>Generate item description</h3><button type="button" class="btn-outline" onclick="closeModal('aiDescriptionModal')">&times;</button></div>
+            <p class="ai-description-note">Choose the photograph Gemini should inspect.</p>
+            <div id="aiDescriptionPhotoChoices" class="ai-description-photo-grid"></div>
+            <div class="ai-description-actions">
+                <button type="button" class="btn-primary" data-ai-mode="brief" onclick="generateItemDescription('brief')">Brief description</button>
+                <button type="button" class="btn-primary" data-ai-mode="fitting" onclick="generateItemDescription('fitting')">Check fitting</button>
+                <button type="button" class="btn-outline" onclick="closeModal('aiDescriptionModal')">Cancel</button>
+            </div>
+            <div id="aiDescriptionStatus" class="ai-description-status" aria-live="polite"></div>
+        </div>`;
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function getAiDescriptionImageChoices(mode) {
+    const files = mode === "add" ? currentAddItemFiles : currentEditItemFiles;
+    const choices = (files || []).map((file, index) => ({
+        label: `New photo ${index + 1}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+    }));
+    if (mode === "edit") {
+        (currentItemForActions?.photos || []).forEach((photo, index) => {
+            choices.push({
+                label: photo.is_primary ? "Current primary photo" : `Current photo ${index + 1}`,
+                previewUrl: window.db.storage.from("item-photos").getPublicUrl(photo.file_path).data.publicUrl,
+            });
+        });
+    }
+    return choices;
+}
+
+async function openAiDescriptionModal(mode) {
+    aiDescriptionTargetMode = mode;
+    aiDescriptionImageChoices.forEach(choice => { if (choice.file && choice.previewUrl) URL.revokeObjectURL(choice.previewUrl); });
+    aiDescriptionImageChoices = getAiDescriptionImageChoices(mode);
+    if (!aiDescriptionImageChoices.length) {
+        await customAlert("Add at least one item photograph before generating a description.", "Photo Required");
+        return;
+    }
+    aiDescriptionSelectedIndex = 0;
+    const modal = ensureAiDescriptionModal();
+    const grid = document.getElementById("aiDescriptionPhotoChoices");
+    const status = document.getElementById("aiDescriptionStatus");
+    if (status) status.textContent = "";
+    grid.innerHTML = "";
+    aiDescriptionImageChoices.forEach((choice, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ai-description-photo-choice";
+        button.classList.toggle("selected", index === aiDescriptionSelectedIndex);
+        button.innerHTML = `<img src="${choice.previewUrl}" alt=""><span>${escapeHtml(choice.label)}</span>`;
+        button.onclick = () => {
+            aiDescriptionSelectedIndex = index;
+            grid.querySelectorAll(".ai-description-photo-choice").forEach((option, optionIndex) => option.classList.toggle("selected", optionIndex === index));
+        };
+        grid.appendChild(button);
+    });
+    modal.style.display = "flex";
+}
+
+async function imageChoiceToGeminiPayload(choice) {
+    const blob = choice.file || await fetch(choice.previewUrl).then(response => {
+        if (!response.ok) throw new Error("Unable to load the selected photograph");
+        return response.blob();
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+        const image = await new Promise((resolve, reject) => {
+            const element = new Image();
+            element.onload = () => resolve(element);
+            element.onerror = () => reject(new Error("Unable to prepare the selected photograph"));
+            element.src = objectUrl;
+        });
+        const maxDimension = 1600;
+        const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        const outputBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.86));
+        if (!outputBlob) throw new Error("Unable to compress the selected photograph");
+        const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error || new Error("Unable to encode photograph"));
+            reader.readAsDataURL(outputBlob);
+        });
+        return { mimeType: "image/jpeg", imageBase64: String(dataUrl).split(",")[1] };
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+    }
+}
+
+async function generateItemDescription(requestMode) {
+    const choice = aiDescriptionImageChoices[aiDescriptionSelectedIndex];
+    if (!choice || !window.db?.functions) return customAlert("The description service is unavailable.", "Gemini Unavailable");
+    const modal = document.getElementById("aiDescriptionModal");
+    const buttons = modal?.querySelectorAll("button") || [];
+    const status = document.getElementById("aiDescriptionStatus");
+    buttons.forEach(button => { button.disabled = true; });
+    if (status) status.innerHTML = `<span class="button-spinner" aria-hidden="true"></span> Inspecting photograph...`;
+    try {
+        const imagePayload = await imageChoiceToGeminiPayload(choice);
+        const { data, error } = await window.db.functions.invoke("generate-item-description", {
+            body: { mode: requestMode, ...imagePayload },
+        });
+        if (error) throw error;
+        if (!data?.description) throw new Error(data?.error || "No description was returned");
+        const textarea = document.getElementById(aiDescriptionTargetMode === "add" ? "itemDescription" : "editItemDescription");
+        if (textarea?.value.trim()) {
+            const replace = await customConfirm("Replace the current item description with the generated description?", "Replace Description?");
+            if (!replace) return;
+        }
+        textarea.value = data.description.trim();
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.dispatchEvent(new Event("change", { bubbles: true }));
+        closeModal("aiDescriptionModal");
+    } catch (error) {
+        console.error("Gemini description failed:", error);
+        if (status) status.textContent = error?.message || "Description generation failed";
+    } finally {
+        buttons.forEach(button => { button.disabled = false; });
+    }
 }
 
 function ensureAddItemLayout() {
@@ -2310,6 +2541,7 @@ function ensureAddItemLayout() {
     if (addNfcInput) { addNfcInput.type = "hidden"; addNfcField.append(addNfcInput); }
 
     const minimumControl = ensureMinimumOrderControl("add");
+    const descriptionControl = makeAiDescriptionControl("add", description);
 
     const locationRow = document.createElement("div");
     locationRow.className = "item-form-location-row";
@@ -2345,7 +2577,7 @@ function ensureAddItemLayout() {
         title,
         media,
         makeInventoryFormRow("Name", name),
-        makeInventoryFormRow("Description", description),
+        makeInventoryFormRow("Description", descriptionControl),
         makeInventoryFormRow("Tool?", addToolToggle),
         makeInventoryFormRow("Quantity", qtyWrapper, "quantity-row"),
         makeInventoryFormRow("Minimum stock", minimumControl, "minimum-stock-row"),
@@ -2421,6 +2653,7 @@ function ensureEditItemLayout() {
     identityRow.append(barcodeField, nfcField);
 
     const minimumControl = ensureMinimumOrderControl("edit");
+    const descriptionControl = makeAiDescriptionControl("edit", description);
     if (equipmentCheckbox) editToolToggle.append(equipmentCheckbox);
 
     const locationRow = document.createElement("div");
@@ -2454,7 +2687,7 @@ function ensureEditItemLayout() {
         title,
         media,
         makeInventoryFormRow("Name", name),
-        makeInventoryFormRow("Description", description),
+        makeInventoryFormRow("Description", descriptionControl),
         makeInventoryFormRow("Tool?", editToolToggle),
         makeInventoryFormRow("Quantity", qtyWrapper, "quantity-row"),
         makeInventoryFormRow("Minimum stock", minimumControl, "minimum-stock-row"),
@@ -2493,6 +2726,60 @@ function openAddItemModal() {
     document.getElementById("addItemModal").style.display = "flex"; 
     updateTopNavVisibilityForOverlays();
     markModalClean("addItemModal");
+}
+
+async function setPhotoCameraZoom(value) {
+    const video = document.getElementById("photoCaptureVideo");
+    photoRuntimeZoom = await applyTrackZoom(getVideoTrackFromElement(video), value);
+    if (video) video.dataset.currentZoom = photoRuntimeZoom;
+    photoSettingsDirty = true;
+    updatePhotoCameraControls();
+}
+
+async function switchPhotoCamera() {
+    const devices = await getOrFetchCameras();
+    if (!devices?.length) return;
+    const currentIndex = devices.findIndex(device => String(device.id) === String(photoRuntimeCameraId));
+    photoRuntimeCameraId = devices[(currentIndex + 1 + devices.length) % devices.length].id;
+    photoSettingsDirty = true;
+    stopPhotoCaptureStream();
+    const video = document.getElementById("photoCaptureVideo");
+    photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: photoRuntimeCameraId } }, audio: false });
+    video.srcObject = photoCaptureStream;
+    await video.play();
+    photoRuntimeZoom = await applyTrackZoom(getVideoTrackFromElement(video), photoRuntimeZoom);
+    video.dataset.currentZoom = photoRuntimeZoom;
+    updatePhotoCameraControls();
+}
+
+async function cyclePhotoFlashMode() {
+    const modes = ["off", "on", "flash"];
+    photoFlashMode = modes[(modes.indexOf(photoFlashMode) + 1) % modes.length];
+    const track = getVideoTrackFromElement(document.getElementById("photoCaptureVideo"));
+    const supported = await setTrackTorch(track, photoFlashMode === "on");
+    if (!supported) photoFlashMode = "off";
+    updatePhotoCameraControls();
+}
+
+function updatePhotoCameraControls() {
+    const saveBtn = document.getElementById("photoSaveSettingsButton");
+    const flashBtn = document.getElementById("photoFlashButton");
+    const readout = document.getElementById("photoZoomReadout");
+    if (saveBtn) saveBtn.style.display = photoSettingsDirty ? "inline-flex" : "none";
+    if (readout) readout.textContent = `${Number(photoRuntimeZoom || 1).toFixed(1)}x - pinch to zoom`;
+    if (flashBtn) {
+        const isOff = photoFlashMode === "off";
+        flashBtn.innerHTML = `<img src="assets/icons/${isOff ? "lightning-slash" : "lightning"}.svg" alt=""><span>${photoFlashMode === "flash" ? "Flash" : photoFlashMode === "on" ? "On" : "Off"}</span>`;
+        flashBtn.setAttribute("aria-label", `Flash ${photoFlashMode}`);
+    }
+}
+
+async function savePhotoCameraSettings() {
+    userSettings.photoCameraId = photoRuntimeCameraId || "AUTO_REAR";
+    userSettings.photoZoom = photoRuntimeZoom || 1;
+    await saveInventorySettings();
+    photoSettingsDirty = false;
+    updatePhotoCameraControls();
 }
 
 function closeAddItemModal() { closeModalClean("addItemModal"); }
@@ -4385,6 +4672,11 @@ let isProcessingUnifiedScan = false;
 let lastNativeNfcToken = "";
 let lastNativeNfcAt = 0;
 let diagnosticsNfcAbortController = null;
+let scannerRuntimeCameraId = null;
+let scannerRuntimeZoom = 1;
+let scannerSettingsDirty = false;
+let scannerTorchEnabled = false;
+let scannerRestarting = false;
 
 window.openBarcodeScannerModal = async function(targetInputId = null) {
     // 1. Clean up any previous instances
@@ -4398,9 +4690,18 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
     }
 
     document.getElementById("barcodeScannerModal").style.display = "flex"; 
+    const legacyCameraSwitch = document.querySelector("#barcodeScannerModal button[onclick=\"switchScannerCamera('main')\"]");
+    if (legacyCameraSwitch) legacyCameraSwitch.style.display = "none";
     window.activeBarcodeTargetInputId = targetInputId; // Kept for legacy compatibility
     window.currentBarcodeTargetField = targetInputId;
     isProcessingUnifiedScan = false;
+    if (!scannerRestarting) {
+        scannerRuntimeCameraId = userSettings.defaultCameraId || "AUTO_REAR";
+        scannerRuntimeZoom = Number(userSettings.defaultZoom) || 1.5;
+        scannerSettingsDirty = false;
+    }
+    scannerRestarting = false;
+    scannerTorchEnabled = false;
 
     const cancelBtn = document.getElementById("barcodeScannerCancelBtn");
     if (cancelBtn) {
@@ -4424,7 +4725,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
         container.parentElement.appendChild(uiWrapper);
     }
 
-    const defaultZoom = userSettings.defaultZoom || 1.5;
+    const defaultZoom = scannerRuntimeZoom;
     
     uiWrapper.innerHTML = `
         <div id="nfcStatusDisplay" style="padding: 10px; border-radius: 8px; font-weight: bold; font-size: 13px; text-align: center; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; transition: all 0.3s ease;">
@@ -4437,6 +4738,15 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
             </div>
             <input type="range" id="liveZoomSlider" min="1.0" max="4.0" step="0.1" value="${defaultZoom}" 
                    oninput="applyDynamicZoom(this.value)" style="width: 100%; accent-color: #004a99;">
+        </div>
+    `;
+
+    uiWrapper.innerHTML = `
+        <div class="scanner-camera-controls">
+            <button type="button" class="camera-icon-btn" onclick="switchScannerCamera('main')" aria-label="Change camera"><img src="assets/icons/camera.svg" alt=""></button>
+            <button type="button" id="scannerTorchButton" class="camera-icon-btn" onclick="toggleScannerTorch()" aria-label="Turn torch on"><img src="assets/icons/lightning-slash.svg" alt=""><span>Off</span></button>
+            <span id="liveZoomValDisplay" class="camera-zoom-readout">${Number(defaultZoom).toFixed(1)}x - pinch to zoom</span>
+            <button type="button" id="scannerSaveSettingsButton" class="camera-save-btn" onclick="saveScannerCameraSettings()" style="display:none;">Save settings</button>
         </div>
     `;
 
@@ -4475,7 +4785,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
 
     // 4. START OPTICAL CAMERA ENGINE
     html5QrcodeScannerInstance = new Html5Qrcode("scannerReaderContainer");
-    const lensConfig = (typeof determineActiveTargetLens === 'function') ? await determineActiveTargetLens() : { facingMode: "environment" };
+    const lensConfig = (typeof determineActiveTargetLens === 'function') ? await determineActiveTargetLens(scannerRuntimeCameraId) : { facingMode: "environment" };
 
     html5QrcodeScannerInstance.start(
         lensConfig, 
@@ -4487,33 +4797,50 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
         }, 
         () => {}
     ).then(() => {
-        // Automatically apply the default zoom setting when the camera boots
-        if (typeof applyDynamicZoom === 'function') applyDynamicZoom(defaultZoom);
+        const video = container.querySelector("video");
+        installPinchZoom(video, applyDynamicZoom);
+        if (typeof applyDynamicZoom === 'function') applyDynamicZoom(defaultZoom, false);
     }).catch(err => {
         console.error("Camera Init Error:", err);
     });
 };
 
 // --- DYNAMIC ZOOM (Does NOT overwrite Master Settings) ---
-window.applyDynamicZoom = function(val) {
+window.applyDynamicZoom = async function(val, markDirty = true) {
     const display = document.getElementById('liveZoomValDisplay');
-    if (display) display.textContent = val + 'x';
 
     const container = document.getElementById("scannerReaderContainer");
     if (!container) return;
     const videoEl = container.querySelector("video");
-    if (videoEl && videoEl.srcObject) {
-        const track = videoEl.srcObject.getVideoTracks()[0];
-        if (track && typeof track.getCapabilities === "function") {
-            const caps = track.getCapabilities();
-            if ("zoom" in caps) {
-                let target = parseFloat(val);
-                if (target < caps.zoom.min) target = caps.zoom.min;
-                if (target > caps.zoom.max) target = caps.zoom.max;
-                track.applyConstraints({ advanced: [{ zoom: target }] }).catch(()=>{});
-            }
-        }
+    const track = getVideoTrackFromElement(videoEl);
+    scannerRuntimeZoom = await applyTrackZoom(track, val);
+    if (videoEl) videoEl.dataset.currentZoom = scannerRuntimeZoom;
+    if (display) display.textContent = `${Number(scannerRuntimeZoom).toFixed(1)}x - pinch to zoom`;
+    if (markDirty) scannerSettingsDirty = true;
+    const saveBtn = document.getElementById("scannerSaveSettingsButton");
+    if (saveBtn) saveBtn.style.display = scannerSettingsDirty ? "inline-flex" : "none";
+};
+
+window.toggleScannerTorch = async function() {
+    const video = document.querySelector("#scannerReaderContainer video");
+    const track = getVideoTrackFromElement(video);
+    scannerTorchEnabled = !scannerTorchEnabled;
+    const supported = await setTrackTorch(track, scannerTorchEnabled);
+    if (!supported) scannerTorchEnabled = false;
+    const button = document.getElementById("scannerTorchButton");
+    if (button) {
+        button.innerHTML = `<img src="assets/icons/${scannerTorchEnabled ? "lightning" : "lightning-slash"}.svg" alt=""><span>${scannerTorchEnabled ? "On" : "Off"}</span>`;
+        button.setAttribute("aria-label", `Turn torch ${scannerTorchEnabled ? "off" : "on"}`);
     }
+};
+
+window.saveScannerCameraSettings = async function() {
+    userSettings.defaultCameraId = scannerRuntimeCameraId || "AUTO_REAR";
+    userSettings.defaultZoom = scannerRuntimeZoom || 1;
+    await saveInventorySettings();
+    scannerSettingsDirty = false;
+    const saveBtn = document.getElementById("scannerSaveSettingsButton");
+    if (saveBtn) saveBtn.style.display = "none";
 };
 
 // --- THE MASTER ROUTER (Handles both Barcode & NFC perfectly) ---
@@ -5803,14 +6130,18 @@ window.switchScannerCamera = async function(modalPrefix) {
         if (!devices || devices.length <= 1) {
             alert("⚠️ Only one rear hardware lens element detected on this platform."); return;
         }
-        currentCameraIndex = (currentCameraIndex + 1) % devices.length;
-        userSettings.defaultCameraId = devices[currentCameraIndex].id;
+        const activeCameraIndex = devices.findIndex(device => String(device.id) === String(scannerRuntimeCameraId));
+        currentCameraIndex = (activeCameraIndex + 1 + devices.length) % devices.length;
+        const selectedCameraId = devices[currentCameraIndex].id;
+        scannerRuntimeCameraId = selectedCameraId;
+        scannerSettingsDirty = true;
         
         if (modalPrefix === 'qa') { stopQuickAssignScanner(); startQuickAssignScanner(); }
         else if (modalPrefix === 'qm') { stopQuickMoveScanner(); startQuickMoveScanner(); }
         else if (modalPrefix === 'qr') { stopQuickReturnScanner(); startQuickReturnScanner(); }
         else if (modalPrefix === 'main') {
             if (typeof closeBarcodeScannerModal === 'function' && typeof openBarcodeScannerModal === 'function') {
+                scannerRestarting = true;
                 const targetField = window.currentBarcodeTargetField || null;
                 closeBarcodeScannerModal();
                 setTimeout(() => { openBarcodeScannerModal(targetField); }, 250);
@@ -5820,14 +6151,14 @@ window.switchScannerCamera = async function(modalPrefix) {
 };
 
 // 1. FIXED LENS DETERMINER (More resilient)
-async function determineActiveTargetLens() {
+async function determineActiveTargetLens(cameraId = scannerRuntimeCameraId || userSettings.defaultCameraId) {
     try {
         const devices = await getOrFetchCameras();
         if (!devices || devices.length === 0) return { facingMode: "environment" };
         
         // If user has a preference, try to find it in the current device list
-        if (userSettings.defaultCameraId && userSettings.defaultCameraId !== "AUTO_REAR") {
-            const savedMatch = devices.find(d => String(d.id) === String(userSettings.defaultCameraId));
+        if (cameraId && cameraId !== "AUTO_REAR") {
+            const savedMatch = devices.find(d => String(d.id) === String(cameraId));
             if (savedMatch) return { deviceId: { exact: savedMatch.id } };
         }
         
