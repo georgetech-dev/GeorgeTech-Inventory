@@ -1,4 +1,4 @@
-const CACHE_NAME = 'FieldHub-Inventory-v1';
+const CACHE_NAME = 'FieldHub-Inventory-v2-camera2';
 
 // These are the core files the app NEEDS to boot up offline.
 const urlsToCache = [

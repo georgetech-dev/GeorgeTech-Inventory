@@ -171,6 +171,14 @@ public class MainActivity extends Activity {
     }
 
     private void openFileChooser(WebChromeClient.FileChooserParams params) {
+        if (params.isCaptureEnabled()) {
+            Intent cameraIntent = createCameraIntent();
+            if (cameraIntent != null) {
+                startActivityForResult(cameraIntent, REQ_FILE_CHOOSER);
+                return;
+            }
+        }
+
         Intent contentIntent = params.createIntent();
         contentIntent.addCategory(Intent.CATEGORY_OPENABLE);
         contentIntent.setType("image/*");

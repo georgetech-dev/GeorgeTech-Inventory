@@ -534,7 +534,7 @@
             <label>Category Group</label>
             <div style="display: flex; gap: 8px;"><select id="itemCategorySelect" style="margin-bottom: 0;"></select><button class="btn-outline" style="height: 42px; padding: 10px 14px;" onclick="openCategoryModal(true)">+</button></div>
             <label style="margin-top: 15px;">Assign Tags</label>
-            <div style="display: flex; gap: 8px;"><select id="itemTagSelect" style="margin-bottom: 0;" onchange="handleTagSelection('add', this.value)"></select><button class="btn-outline" style="height: 42px; padding: 10px 14px;" onclick="openTagModal(true)">+</button></div>
+            <div style="display: flex; gap: 8px;"><select id="itemTagSelect" style="margin-bottom: 0;" onchange="handleTagSelection('add', this.value)"></select></div>
             <div id="addItemTagsPillsRow" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; margin-bottom: 10px;"></div>
             <div class="modal-buttons" style="margin-top: 25px;">
                 <button class="btn-outline" onclick="confirmCancel('addItemModal')">Cancel</button>
@@ -628,7 +628,6 @@
                 <label style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Registry Tags</label>
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <select id="editItemTagSelect" style="height: 38px; padding: 4px 8px !important; font-size: 13px; margin-bottom: 0; flex-grow: 1; border-radius: 8px;" onchange="handleTagSelection('edit', this.value)"></select>
-                    <button class="btn-outline" style="height: 38px; padding: 0 12px; font-weight: bold; font-size: 16px; border-radius: 8px; flex-shrink: 0;" onclick="openTagModal(true)">+</button>
                 </div>
                 <div id="editItemTagsPillsRow" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
             </div>
@@ -1189,7 +1188,7 @@
                      <span>Inventory</span>
                 </div>
                 <span>FieldHub &copy; 2026</span>
-                <span class="inventory-footer-version">Build v2026.06.24-back1</span>
+                <span class="inventory-footer-version">Build v2026.06.24-camera2</span>
             </div>
             <div class="inventory-footer-support">
                 <span>For support:</span>
@@ -1268,7 +1267,7 @@
         };
     </script>
 
-    <script src="../assets/js/inventory.js"></script>
+    <script src="../assets/js/inventory.js?v=20260624-back2"></script>
     <script>
 
 

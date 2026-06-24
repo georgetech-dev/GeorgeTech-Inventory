@@ -2375,42 +2375,8 @@ function stopPhotoCaptureStream() {
 
 async function openPhotoCaptureModal(mode) {
     photoCaptureMode = mode;
-    const modal = ensurePhotoCaptureModal();
-    const video = document.getElementById("photoCaptureVideo");
-    modal.style.display = "flex";
-
-    try {
-        stopPhotoCaptureStream();
-        photoRuntimeCameraId = userSettings.photoCameraId || "AUTO_REAR";
-        photoRuntimeZoom = Number(userSettings.photoZoom) || 1;
-        photoSettingsDirty = false;
-        photoFlashMode = "off";
-        updatePhotoCameraControls();
-        const videoConstraint = photoRuntimeCameraId && photoRuntimeCameraId !== "AUTO_REAR"
-            ? { deviceId: { exact: photoRuntimeCameraId } }
-            : { facingMode: { ideal: "environment" } };
-        photoCaptureStream = await navigator.mediaDevices.getUserMedia({
-            video: videoConstraint,
-            audio: false
-        });
-        video.srcObject = photoCaptureStream;
-        await video.play();
-        const track = getVideoTrackFromElement(video);
-        photoRuntimeCameraId = track?.getSettings?.().deviceId || photoRuntimeCameraId;
-        photoFacingMode = track?.getSettings?.().facingMode || photoFacingMode;
-        const cameras = await getOrFetchCameras();
-        const matchedIndex = cameras.findIndex(camera => String(camera.id) === String(photoRuntimeCameraId));
-        photoCameraIndex = matchedIndex >= 0 ? matchedIndex : 0;
-        photoRuntimeZoom = await applyCameraZoom(video, photoRuntimeZoom);
-        video.dataset.currentZoom = photoRuntimeZoom;
-        installPinchZoom(video, setPhotoCameraZoom);
-        configurePhotoZoomControl(video);
-        updatePhotoCameraControls();
-    } catch (error) {
-        console.warn("Device camera unavailable, falling back to file picker:", error);
-        closePhotoCaptureModal();
-        fallbackPhotoFilePicker(mode);
-    }
+    stopPhotoCaptureStream();
+    fallbackPhotoFilePicker(mode);
 }
 
 function closePhotoCaptureModal() {
@@ -4511,9 +4477,23 @@ function setupTagSearchInput(mode) {
     pickerSearch.className = "tag-search-options-search";
     pickerSearch.placeholder = "Search tags...";
     pickerSearch.autocomplete = "off";
+    const searchRow = document.createElement("div");
+    searchRow.className = "tag-search-options-search-row";
+    const createTagButton = document.createElement("button");
+    createTagButton.type = "button";
+    createTagButton.className = "tag-search-create-btn";
+    createTagButton.textContent = "+";
+    createTagButton.title = "Create tag";
+    createTagButton.setAttribute("aria-label", "Create tag");
+    createTagButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openTagModal(true);
+    });
+    searchRow.append(pickerSearch, createTagButton);
     const listGrid = document.createElement("div");
     listGrid.className = "tag-search-options-grid";
-    list.append(listHeader, pickerSearch, listGrid);
+    list.append(listHeader, searchRow, listGrid);
 
     const closeList = () => {
         saveFloatingPanelState(list);
@@ -4563,11 +4543,17 @@ function setupTagSearchInput(mode) {
         const viewportHeight = viewport?.height || window.innerHeight;
         const targetWidth = modalRect?.width || trigger.getBoundingClientRect().width;
         list.style.left = "50%";
-        list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24)}px`;
+        list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24, 520)}px`;
         list.style.transform = "translateX(-50%)";
+        const bounds = getFloatingPanelBounds(list);
+        list.style.maxHeight = `${bounds.maxHeight}px`;
+        if (list.dataset.saved !== "true") list.style.height = `${Math.min(620, bounds.maxHeight)}px`;
+        else if (list.getBoundingClientRect().height > bounds.maxHeight) list.style.height = `${bounds.maxHeight}px`;
         if (list.dataset.saved !== "true") {
-            const bounds = getFloatingPanelBounds(list);
-            list.style.top = `${Math.max(bounds.minTop, Math.min(bounds.maxTop, viewportTop + 72))}px`;
+            list.style.top = `${bounds.minTop}px`;
+        } else {
+            const currentTop = parseFloat(list.style.top) || bounds.minTop;
+            list.style.top = `${Math.max(bounds.minTop, Math.min(bounds.maxTop, currentTop))}px`;
         }
         list.style.display = "block";
         list.classList.add("open");
@@ -4580,6 +4566,12 @@ function setupTagSearchInput(mode) {
         renderOptions();
     });
     pickerSearch.addEventListener("input", renderOptions);
+    document.addEventListener("fieldhub:tags-updated", () => {
+        if (list.classList.contains("open")) renderOptions();
+    });
+    window.visualViewport?.addEventListener("resize", () => {
+        if (list.classList.contains("open")) renderOptions();
+    });
     document.addEventListener("pointerdown", event => {
         if (!wrapper.contains(event.target) && !list.contains(event.target)) closeList();
     });
@@ -4683,7 +4675,7 @@ function getFloatingPanelBounds(panel) {
     const viewport = window.visualViewport;
     const viewportTop = viewport?.offsetTop || 0;
     const viewportHeight = viewport?.height || window.innerHeight;
-    const minTop = Math.max(12, viewportTop + navBottom + 10);
+    const minTop = Math.max(12, navBottom + 10, viewportTop + 12);
     const height = panel?.offsetHeight || 190;
     const maxTop = Math.max(minTop, viewportTop + viewportHeight - height - 8);
     const maxHeight = Math.max(190, viewportHeight - minTop - 8);
@@ -4787,7 +4779,7 @@ async function loadCategoriesAdmin() {
     });
 }
 
-function openTagModal(isSubCall = false, id = null, name = '') { isSubModalContextCall = isSubCall; editingTagTargetId = id; document.getElementById("tagModalTitle").textContent = id ? "Modify Tag Name" : "Add New Tag Label"; document.getElementById("tagModalInput").value = name; setTagAlphabetRailModalState(true); document.getElementById("centralTagModal").style.display = "flex"; }
+function openTagModal(isSubCall = false, id = null, name = '') { isSubModalContextCall = isSubCall; editingTagTargetId = id; document.getElementById("tagModalTitle").textContent = id ? "Modify Tag Name" : "Add New Tag Label"; document.getElementById("tagModalInput").value = name; setTagAlphabetRailModalState(true); const modal = document.getElementById("centralTagModal"); modal.style.zIndex = isSubCall ? "20100" : "10005"; modal.style.display = "flex"; }
 
 async function saveCentralTag() { 
     const name = document.getElementById("tagModalInput").value.trim(); 
@@ -4806,6 +4798,7 @@ async function saveCentralTag() {
         closeModal('centralTagModal'); 
         logAction("CREATE/UPDATE", "Tag", name, "Modified system tag"); 
         await refreshAllDataFromLocal(); 
+        document.dispatchEvent(new CustomEvent("fieldhub:tags-updated"));
         if (isSubModalContextCall) { 
             const currentActiveMode = document.getElementById("itemEditModal").style.display === 'flex' ? 'edit' : 'add'; 
             handleTagSelection(currentActiveMode, name); 
