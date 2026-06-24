@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
     private NfcAdapter nfcAdapter;
     private PendingIntent nfcPendingIntent;
     private long lastBackPressTime = 0L;
+    private boolean backEvaluationPending = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -265,6 +266,23 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (webView != null && !backEvaluationPending) {
+            backEvaluationPending = true;
+            String script = "(function(){try{return !!(window.handleFieldHubBackButton&&window.handleFieldHubBackButton());}catch(error){console.error('Back handler failed',error);return false;}})();";
+            webView.evaluateJavascript(script, result -> {
+                backEvaluationPending = false;
+                if ("true".equalsIgnoreCase(String.valueOf(result))) {
+                    lastBackPressTime = 0L;
+                    return;
+                }
+                handleUnhandledBackPress();
+            });
+            return;
+        }
+        if (!backEvaluationPending) handleUnhandledBackPress();
+    }
+
+    private void handleUnhandledBackPress() {
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
             return;

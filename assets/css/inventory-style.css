@@ -706,6 +706,38 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     touch-action: none;
 }
 
+.photo-zoom-slider-wrap {
+    position: absolute;
+    top: 54px;
+    right: 10px;
+    bottom: 92px;
+    z-index: 5;
+    width: 42px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    background: rgba(15,23,42,0.62);
+    border-radius: 20px;
+    padding: 7px 0;
+    backdrop-filter: blur(4px);
+}
+
+#photoZoomSlider {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    appearance: slider-vertical;
+    width: 28px !important;
+    height: min(34vh, 220px) !important;
+    margin: 0 !important;
+    accent-color: #10b981;
+    touch-action: none;
+}
+
 .photo-camera-toolbar,
 .scanner-camera-controls {
     display: flex;
@@ -722,6 +754,24 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     bottom: 0;
     padding: 12px;
     background: linear-gradient(transparent, rgba(0,0,0,0.82));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
+.photo-camera-toolbar-side {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.photo-camera-toolbar-left { justify-content: flex-end; }
+.photo-camera-toolbar-right { justify-content: flex-start; }
+.photo-camera-toolbar .photo-shutter-btn {
+    grid-column: 2;
+    justify-self: center;
 }
 
 .camera-icon-btn,
@@ -753,6 +803,8 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     .photo-camera-stage video { height: calc(96vh - 90px); }
     .photo-camera-header { position: absolute; z-index: 4; left: 14px; right: 14px; top: 12px; pointer-events: none; }
     .photo-camera-header button { pointer-events: auto; }
+    .photo-zoom-slider-wrap { top: 50px; bottom: 76px; }
+    #photoZoomSlider { height: min(42vh, 170px) !important; }
 }
 
 .view-thumb-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; margin-top: 10px; }

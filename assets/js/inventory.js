@@ -5,6 +5,7 @@ let isImportingSyncLock = false;
 let currentItemForActions = null;
 let currentLocationId = null;
 let locationHistory = [];
+let locationBackStack = [];
 let locationsAdmin = [];
 let tempLocationsAdmin = []; 
 let adminLocationView = "hierarchy";
@@ -222,7 +223,7 @@ function getModalDirtySnapshot(modalId) {
         values.__newFiles = currentAddItemFiles.map(file => file.name);
         values.__primaryPhoto = primaryPhotoIdentifier || "";
     }
-    if (modalId === "locationActionsModal" || modalId === "addLocationModal") {
+    if (["locationActionsModal", "addLocationModal", "tempLocationActionsModal", "addTempLocationModal"].includes(modalId)) {
         values.__photoChanged = !!currentEditLocationFile || !!window.locationPhotoDeleted || currentAddLocationFiles.length > 0;
     }
     return JSON.stringify(values);
@@ -625,6 +626,106 @@ function closeModal(id) {
 }
 async function confirmCancel(modalId) { await closeModalWithDirtyCheck(modalId); }
 async function withStatus(fn, label) { window.setStatus("syncing", label); try { const r = await fn(); window.setStatus("connected", "Connected"); return r; } catch (e) { window.setStatus("error", "Error"); throw e; } }
+
+function getTopmostOpenModal() {
+    return Array.from(document.querySelectorAll(".modal"))
+        .filter(modal => {
+            const display = modal.style.display || window.getComputedStyle(modal).display;
+            return display === "flex" || display === "block" || modal.classList.contains("open");
+        })
+        .sort((a, b) => {
+            const zA = Number(window.getComputedStyle(a).zIndex) || 0;
+            const zB = Number(window.getComputedStyle(b).zIndex) || 0;
+            return zA === zB ? Array.from(document.querySelectorAll(".modal")).indexOf(a) - Array.from(document.querySelectorAll(".modal")).indexOf(b) : zA - zB;
+        })
+        .pop() || null;
+}
+
+function closeTopmostAppModal(modal) {
+    if (!modal) return false;
+    const id = modal.id;
+    if (modal.querySelector("button:disabled") && window.isProcessingTransaction) return true;
+
+    if (id === "customDialogModal") {
+        const dismiss = document.getElementById("dialogCancelBtn") || document.getElementById("dialogOkBtn") || document.getElementById("noChangesReturnBtn");
+        dismiss?.click();
+        return true;
+    }
+
+    if (modalDirtySnapshots[id] !== undefined) {
+        closeModalWithDirtyCheck(id);
+        return true;
+    }
+
+    const dedicatedClosers = {
+        photoCaptureModal: () => closePhotoCaptureModal(),
+        barcodeScannerModal: () => window.cancelBarcodeScannerModal?.(),
+        nfcScannerModal: () => window.closeNfcScannerModal?.(),
+        nfcDiagnosticsModal: () => window.closeNfcDiagnosticsModal?.(),
+        itemDetailsModal: () => closeItemDetailsModal(),
+        quickAssignModal: () => window.closeQuickAssignModal?.(),
+        quickMoveModal: () => window.closeQuickMoveModal?.(),
+        quickReturnModal: () => window.closeQuickReturnModal?.(),
+    };
+    if (dedicatedClosers[id]) {
+        dedicatedClosers[id]();
+        return true;
+    }
+
+    const closeButton = Array.from(modal.querySelectorAll("button")).find(button => {
+        const action = String(button.getAttribute("onclick") || "").toLowerCase();
+        const label = String(button.textContent || "").trim().toLowerCase();
+        return action.includes("close") || action.includes("cancel") || label === "close" || label.startsWith("cancel") || label === "×" || label === "x";
+    });
+    if (closeButton) closeButton.click();
+    else closeModal(id);
+    return true;
+}
+
+async function navigateBackInItemLocations() {
+    if (!document.getElementById("pageItems")?.classList.contains("active")) return false;
+
+    if (locationBackStack.length) {
+        const previous = locationBackStack.pop();
+        if (!previous) await loadRootLocations();
+        else if (previous === "unallocated") await loadUnallocatedItems();
+        else await loadLocation(previous);
+        return true;
+    }
+
+    if (!currentLocationId) return false;
+    if (currentLocationId === "unallocated") {
+        await loadRootLocations();
+        return true;
+    }
+    const current = await localDB.locations.get(currentLocationId);
+    if (current?.parent_id) await loadLocation(current.parent_id);
+    else await loadRootLocations();
+    return true;
+}
+
+window.handleFieldHubBackButton = function() {
+    const lightbox = document.getElementById("review-lightbox");
+    if (lightbox && window.getComputedStyle(lightbox).display !== "none") {
+        closeLightbox();
+        return true;
+    }
+
+    const openTagPicker = document.querySelector(".tag-search-options.open");
+    if (openTagPicker) {
+        openTagPicker.querySelector(".tag-search-options-header button")?.click();
+        return true;
+    }
+
+    const modal = getTopmostOpenModal();
+    if (modal) return closeTopmostAppModal(modal);
+
+    if (document.getElementById("pageItems")?.classList.contains("active") && (currentLocationId || locationBackStack.length)) {
+        navigateBackInItemLocations().catch(error => console.error("Location back navigation failed:", error));
+        return true;
+    }
+    return false;
+};
 
 function isAnyOverlayOpen() {
     const modalOpen = Array.from(document.querySelectorAll(".modal")).some(modal => {
@@ -1443,8 +1544,17 @@ async function loadLocation(id) {
 }
 
 function navigateToLocation(id) {
+    const previousLocation = currentLocationId;
+    if (String(previousLocation || "") !== String(id || "")) locationBackStack.push(previousLocation || null);
     if (id === "unallocated") { currentLocationId = "unallocated"; loadUnallocatedItems(); return; }
     currentLocationId = id; loadLocation(id);
+}
+
+function rememberLocationBeforeMove(sourceLocationId, destinationLocationId) {
+    const source = sourceLocationId || null;
+    const destination = destinationLocationId || "unallocated";
+    if (String(source || "") === String(destination || "")) return;
+    if (locationBackStack[locationBackStack.length - 1] !== source) locationBackStack.push(source);
 }
 
 function openAddLocationForCurrentItemFolder() {
@@ -1481,7 +1591,7 @@ async function buildBreadcrumb(location) {
     chain.forEach((l, idx) => {
         const sep = document.createElement("span"); sep.className = "breadcrumb-separator"; sep.textContent = " > "; container.appendChild(sep);
         const link = document.createElement("span"); link.className = "breadcrumb-link"; link.textContent = l.name;
-        if (idx === chain.length - 1) { link.classList.add("active"); } else { link.onclick = () => { currentLocationId = l.id; loadLocation(l.id); }; }
+        if (idx === chain.length - 1) { link.classList.add("active"); } else { link.onclick = () => navigateToLocation(l.id); }
         container.appendChild(link);
     });
 }
@@ -2110,6 +2220,8 @@ let photoRuntimeZoom = 1;
 let photoSettingsDirty = false;
 let photoFlashMode = "off";
 let photoFacingMode = "environment";
+let photoCameraIndex = 0;
+let photoZoomKind = "Optical";
 
 function getVideoTrackFromElement(video) {
     return video?.srcObject?.getVideoTracks?.()[0] || null;
@@ -2140,6 +2252,15 @@ async function applyCameraZoom(video, requestedZoom) {
         video.dataset.digitalZoom = "1";
         return zoom;
     }
+    try {
+        await track?.applyConstraints?.({ advanced: [{ zoom: requested }] });
+        const appliedZoom = Number(track?.getSettings?.().zoom);
+        if (Number.isFinite(appliedZoom) && appliedZoom > 0) {
+            video.style.transform = "none";
+            video.dataset.digitalZoom = "1";
+            return appliedZoom;
+        }
+    } catch {}
     video.style.transformOrigin = "center center";
     video.style.transform = `scale(${requested})`;
     video.dataset.digitalZoom = String(requested);
@@ -2199,8 +2320,7 @@ function installPinchZoom(video, onZoom) {
 }
 
 async function setTrackTorch(track, enabled) {
-    const caps = track?.getCapabilities?.() || {};
-    if (!caps.torch) return false;
+    if (!track) return false;
     try {
         await track.applyConstraints({ advanced: [{ torch: !!enabled }] });
         return true;
@@ -2223,15 +2343,23 @@ function ensurePhotoCaptureModal() {
             <div class="photo-camera-stage">
                 <video id="photoCaptureVideo" autoplay playsinline muted></video>
                 <canvas id="photoCaptureCanvas" style="display:none;"></canvas>
+                <div class="photo-zoom-slider-wrap">
+                    <span id="photoZoomMaxLabel">4x</span>
+                <input id="photoZoomSlider" type="range" min="1" max="4" step="0.1" value="1" orient="vertical" oninput="setPhotoCameraZoom(this.value)">
+                    <span id="photoZoomMinLabel">1x</span>
+                </div>
                 <div class="photo-camera-toolbar">
-                    <button type="button" class="camera-icon-btn" onclick="switchPhotoCamera()" aria-label="Switch front or back camera" title="Switch front/back camera"><img src="assets/icons/camera.svg" alt=""><span>Flip</span></button>
-                    <button type="button" id="photoFlashButton" class="camera-icon-btn" onclick="cyclePhotoFlashMode()" aria-label="Flash off"><img src="assets/icons/lightning-slash.svg" alt=""><span>Off</span></button>
+                    <div class="photo-camera-toolbar-side photo-camera-toolbar-left">
+                        <button type="button" class="camera-icon-btn" onclick="switchPhotoCamera()" aria-label="Change camera" title="Change camera"><img src="assets/icons/camera.svg" alt=""><span>Camera</span></button>
+                        <button type="button" id="photoFlashButton" class="camera-icon-btn" onclick="cyclePhotoFlashMode()" aria-label="Flash off"><img src="assets/icons/lightning-slash.svg" alt=""><span>Off</span></button>
+                    </div>
                     <button type="button" class="photo-shutter-btn" onclick="capturePhotoFromDevice()" aria-label="Take photo"><img src="assets/icons/aperture.svg" alt=""></button>
-                    <button type="button" id="photoSaveSettingsButton" class="camera-save-btn" onclick="savePhotoCameraSettings()" style="display:none;">Save settings</button>
+                    <div class="photo-camera-toolbar-side photo-camera-toolbar-right">
+                        <button type="button" id="photoSaveSettingsButton" class="camera-save-btn" onclick="savePhotoCameraSettings()" style="display:none;">Save settings</button>
+                    </div>
                 </div>
                 <div id="photoZoomReadout" class="camera-zoom-readout">Pinch to zoom</div>
             </div>
-            <button class="btn-outline" onclick="fallbackPhotoFilePicker()" style="width:100%; margin-top:10px;">Choose file instead</button>
         </div>
     `;
     document.body.appendChild(modal);
@@ -2270,9 +2398,13 @@ async function openPhotoCaptureModal(mode) {
         const track = getVideoTrackFromElement(video);
         photoRuntimeCameraId = track?.getSettings?.().deviceId || photoRuntimeCameraId;
         photoFacingMode = track?.getSettings?.().facingMode || photoFacingMode;
+        const cameras = await getOrFetchCameras();
+        const matchedIndex = cameras.findIndex(camera => String(camera.id) === String(photoRuntimeCameraId));
+        photoCameraIndex = matchedIndex >= 0 ? matchedIndex : 0;
         photoRuntimeZoom = await applyCameraZoom(video, photoRuntimeZoom);
         video.dataset.currentZoom = photoRuntimeZoom;
         installPinchZoom(video, setPhotoCameraZoom);
+        configurePhotoZoomControl(video);
         updatePhotoCameraControls();
     } catch (error) {
         console.warn("Device camera unavailable, falling back to file picker:", error);
@@ -2338,20 +2470,33 @@ async function capturePhotoFromDevice() {
     canvas.width = width;
     canvas.height = height;
     const track = getVideoTrackFromElement(video);
-    if (photoFlashMode === "flash") {
-        const flashed = await setTrackTorch(track, true);
-        if (!flashed) await customAlert("Flash is not available on the selected camera.", "Flash Unavailable");
-        await new Promise(resolve => setTimeout(resolve, 350));
-    }
     const digitalZoom = Math.max(1, Number(video.dataset.digitalZoom) || 1);
-    const sourceWidth = width / digitalZoom;
-    const sourceHeight = height / digitalZoom;
-    const sourceX = (width - sourceWidth) / 2;
-    const sourceY = (height - sourceHeight) / 2;
-    canvas.getContext("2d").drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+    let blob = null;
+    if (photoFlashMode === "flash" && digitalZoom === 1 && "ImageCapture" in window) {
+        try {
+            const imageCapture = new ImageCapture(track);
+            blob = await imageCapture.takePhoto({ fillLightMode: "flash" });
+        } catch (error) {
+            console.warn("Native still flash unavailable; using torch pulse.", error);
+        }
+    }
+    if (photoFlashMode === "flash") {
+        if (!blob) {
+            const flashed = await setTrackTorch(track, true);
+            if (!flashed) await customAlert("Flash is not available on this camera stream.", "Flash Unavailable");
+            await new Promise(resolve => setTimeout(resolve, 350));
+        }
+    }
+    if (!blob) {
+        const sourceWidth = width / digitalZoom;
+        const sourceHeight = height / digitalZoom;
+        const sourceX = (width - sourceWidth) / 2;
+        const sourceY = (height - sourceHeight) / 2;
+        canvas.getContext("2d").drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+        blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    }
     if (photoFlashMode === "flash") await setTrackTorch(track, false);
 
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob) return;
     const file = new File([blob], `camera-${Date.now()}.jpg`, { type: "image/jpeg" });
     addCapturedPhotoToTarget(file, photoCaptureMode);
@@ -2792,30 +2937,64 @@ async function setPhotoCameraZoom(value) {
     const video = document.getElementById("photoCaptureVideo");
     photoRuntimeZoom = await applyCameraZoom(video, value);
     if (video) video.dataset.currentZoom = photoRuntimeZoom;
+    const slider = document.getElementById("photoZoomSlider");
+    if (slider) slider.value = photoRuntimeZoom;
     photoSettingsDirty = true;
     updatePhotoCameraControls();
 }
 
 async function switchPhotoCamera() {
-    photoFacingMode = photoFacingMode === "user" ? "environment" : "user";
+    const devices = await getOrFetchCameras();
+    if (!devices || devices.length < 2) {
+        await customAlert("Only one camera is available on this device.", "Camera Unavailable");
+        return;
+    }
+    const currentIndex = devices.findIndex(device => String(device.id) === String(photoRuntimeCameraId));
+    const previousCameraId = photoRuntimeCameraId;
+    photoCameraIndex = ((currentIndex >= 0 ? currentIndex : photoCameraIndex) + 1) % devices.length;
+    const nextCamera = devices[photoCameraIndex];
     photoSettingsDirty = true;
     stopPhotoCaptureStream();
     const video = document.getElementById("photoCaptureVideo");
     try {
-        photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: photoFacingMode } }, audio: false });
+        photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: nextCamera.id } }, audio: false });
         video.srcObject = photoCaptureStream;
         await video.play();
         const track = getVideoTrackFromElement(video);
-        photoRuntimeCameraId = track?.getSettings?.().deviceId || "AUTO_REAR";
+        photoRuntimeCameraId = track?.getSettings?.().deviceId || nextCamera.id;
         photoFacingMode = track?.getSettings?.().facingMode || photoFacingMode;
         photoRuntimeZoom = await applyCameraZoom(video, photoRuntimeZoom);
         video.dataset.currentZoom = photoRuntimeZoom;
+        configurePhotoZoomControl(video);
         updatePhotoCameraControls();
     } catch (error) {
-        photoFacingMode = photoFacingMode === "user" ? "environment" : "user";
-        await customAlert("This device did not provide the requested front/back camera.", "Camera Unavailable");
-        await openPhotoCaptureModal(photoCaptureMode);
+        console.warn("Unable to switch photo camera:", error);
+        photoRuntimeCameraId = previousCameraId;
+        if (previousCameraId && previousCameraId !== "AUTO_REAR") {
+            photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: previousCameraId } }, audio: false });
+            video.srcObject = photoCaptureStream;
+            await video.play();
+            configurePhotoZoomControl(video);
+        }
+        await customAlert("This camera could not be opened. Try the next camera.", "Camera Unavailable");
     }
+}
+
+function configurePhotoZoomControl(video) {
+    const slider = document.getElementById("photoZoomSlider");
+    const maxLabel = document.getElementById("photoZoomMaxLabel");
+    if (!slider) return;
+    const track = getVideoTrackFromElement(video);
+    const caps = track?.getCapabilities?.() || {};
+    const min = caps.zoom?.min || 1;
+    const max = caps.zoom?.max || 4;
+    const step = caps.zoom?.step || 0.1;
+    photoZoomKind = caps.zoom ? "Optical" : "Digital";
+    slider.min = min;
+    slider.max = max;
+    slider.step = step;
+    slider.value = Math.max(min, Math.min(max, photoRuntimeZoom));
+    if (maxLabel) maxLabel.textContent = `${Number(max).toFixed(max % 1 ? 1 : 0)}x`;
 }
 
 async function cyclePhotoFlashMode() {
@@ -2835,7 +3014,7 @@ function updatePhotoCameraControls() {
     const flashBtn = document.getElementById("photoFlashButton");
     const readout = document.getElementById("photoZoomReadout");
     if (saveBtn) saveBtn.style.display = photoSettingsDirty ? "inline-flex" : "none";
-    if (readout) readout.textContent = `${Number(photoRuntimeZoom || 1).toFixed(1)}x - pinch to zoom`;
+    if (readout) readout.textContent = `${Number(photoRuntimeZoom || 1).toFixed(1)}x ${photoZoomKind}`;
     if (flashBtn) {
         const isOff = photoFlashMode === "off";
         flashBtn.innerHTML = `<img src="assets/icons/${isOff ? "lightning-slash" : "lightning"}.svg" alt=""><span>${photoFlashMode === "flash" ? "Flash" : photoFlashMode === "on" ? "On" : "Off"}</span>`;
@@ -3156,6 +3335,7 @@ async function executeMoveItem() {
             lastMovedItemId = targetItemId; const destLoc = locationsAdmin.find(l => l.id === destinationId);
             logAction("MOVE", "Item", currentItemForActions.name, `Moved to ${destLoc ? destLoc.name : 'Unallocated'}`);
 
+            rememberLocationBeforeMove(currentLocationId, destinationId);
             await syncAfterWrite();
             if (destinationId) { currentLocationId = destinationId; await loadLocation(destinationId); } 
             else { currentLocationId = "unallocated"; await loadUnallocatedItems(); }
@@ -3388,6 +3568,7 @@ function openAddTempLocationModal() {
     setElementValue("addTempLocationCameraInput", "");
     setElementSrc("addTempLocationPreview", "../assets/images/folder-icon.jpg");
     currentAddLocationFiles = []; document.getElementById("addTempLocationModal").style.display = "flex";
+    markModalClean("addTempLocationModal");
 }
 
 
@@ -3404,6 +3585,7 @@ function openTempLocationActions(id) {
     const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
     document.querySelector("#tempLocationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("tempLocationActionsModal").style.display = "flex";
+    markModalClean("tempLocationActionsModal");
 }
 
 async function saveTempLocationEdits() {
@@ -3689,6 +3871,7 @@ async function executeMoveItem() {
             lastMovedItemId = targetItemId; const destLoc = locationsAdmin.find(l => l.id === destinationId);
             logAction("MOVE", "Item", currentItemForActions.name, `Moved to ${destLoc ? destLoc.name : 'Unallocated'}`);
 
+            rememberLocationBeforeMove(currentLocationId, destinationId);
             await syncAfterWrite();
             if (destinationId) { currentLocationId = destinationId; await loadLocation(destinationId); } 
             else { currentLocationId = "unallocated"; await loadUnallocatedItems(); }
@@ -3811,6 +3994,7 @@ function openAddTempLocationModal() {
     setElementValue("addTempLocationCameraInput", "");
     setElementSrc("addTempLocationPreview", "../assets/images/folder-icon.jpg");
     currentAddLocationFiles = []; document.getElementById("addTempLocationModal").style.display = "flex";
+    markModalClean("addTempLocationModal");
 }
 
 async function addTempLocation(addAnother = false) {
@@ -3849,6 +4033,7 @@ function openTempLocationActions(id) {
     const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
     document.querySelector("#tempLocationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("tempLocationActionsModal").style.display = "flex";
+    markModalClean("tempLocationActionsModal");
 }
 
 async function saveTempLocationEdits() {
