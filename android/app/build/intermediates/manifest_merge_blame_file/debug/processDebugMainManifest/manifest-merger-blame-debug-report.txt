@@ -70,7 +70,7 @@
 38-->[androidx.core:core:1.13.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\8886259c084c41e6330ec3cb9c29289e\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
 39
 40    <application
-40-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:17:5-54:19
+40-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:17:5-61:19
 41        android:allowBackup="true"
 41-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:18:9-35
 42        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
@@ -105,104 +105,144 @@
 58        </provider>
 59
 60        <activity
-60-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:35:9-53:20
-61            android:name="uk.fieldhub.inventory.MainActivity"
-61-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:36:13-41
-62            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-62-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:37:13-122
-63            android:exported="true"
-63-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:38:13-36
-64            android:launchMode="singleTop" >
-64-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:39:13-43
-65            <intent-filter>
-65-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:40:13-43:29
-66                <action android:name="android.intent.action.MAIN" />
-66-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:41:17-69
-66-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:41:25-66
-67
-68                <category android:name="android.intent.category.LAUNCHER" />
-68-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:42:17-77
-68-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:42:27-74
-69            </intent-filter>
-70            <intent-filter>
-70-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:44:13-48:29
-71                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-71-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:45:17-77
-71-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:45:25-74
-72
-73                <category android:name="android.intent.category.DEFAULT" />
-73-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:46:17-76
-73-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:46:27-73
-74
-75                <data android:mimeType="text/plain" />
-75-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:47:17-55
-75-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:47:23-52
-76            </intent-filter>
-77            <intent-filter>
-77-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:49:13-52:29
-78                <action android:name="android.nfc.action.TAG_DISCOVERED" />
-78-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:50:17-76
-78-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:50:25-73
-79
-80                <category android:name="android.intent.category.DEFAULT" />
-80-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:46:17-76
-80-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:46:27-73
-81            </intent-filter>
-82        </activity>
-83
-84        <provider
-84-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:24:9-32:20
-85            android:name="androidx.startup.InitializationProvider"
-85-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:25:13-67
-86            android:authorities="uk.fieldhub.inventory.androidx-startup"
-86-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:26:13-68
-87            android:exported="false" >
-87-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:27:13-37
-88            <meta-data
-88-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
-89                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-89-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
-90                android:value="androidx.startup" />
-90-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
-91        </provider>
-92
-93        <receiver
-93-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
-94            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-94-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
-95            android:directBootAware="false"
-95-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
-96            android:enabled="true"
-96-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
-97            android:exported="true"
-97-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
-98            android:permission="android.permission.DUMP" >
-98-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
-99            <intent-filter>
-99-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
-100                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-100-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
-100-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
-101            </intent-filter>
-102            <intent-filter>
-102-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
-103                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-103-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
-103-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
-104            </intent-filter>
-105            <intent-filter>
-105-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
-106                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-106-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
-106-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
-107            </intent-filter>
-108            <intent-filter>
-108-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
-109                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-109-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
-109-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
-110            </intent-filter>
-111        </receiver>
-112    </application>
+60-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:35:9-40:47
+61            android:name="uk.fieldhub.inventory.CameraActivity"
+61-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:36:13-43
+62            android:configChanges="orientation|screenSize"
+62-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:37:13-59
+63            android:exported="false"
+63-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:38:13-37
+64            android:screenOrientation="fullSensor"
+64-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:39:13-51
+65            android:theme="@style/AppTheme" />
+65-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:40:13-44
+66        <activity
+66-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:42:9-60:20
+67            android:name="uk.fieldhub.inventory.MainActivity"
+67-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:43:13-41
+68            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+68-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:44:13-122
+69            android:exported="true"
+69-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:45:13-36
+70            android:launchMode="singleTop" >
+70-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:46:13-43
+71            <intent-filter>
+71-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:47:13-50:29
+72                <action android:name="android.intent.action.MAIN" />
+72-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:48:17-69
+72-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:48:25-66
+73
+74                <category android:name="android.intent.category.LAUNCHER" />
+74-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:49:17-77
+74-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:49:27-74
+75            </intent-filter>
+76            <intent-filter>
+76-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:51:13-55:29
+77                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+77-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:52:17-77
+77-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:52:25-74
+78
+79                <category android:name="android.intent.category.DEFAULT" />
+79-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:53:17-76
+79-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:53:27-73
+80
+81                <data android:mimeType="text/plain" />
+81-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:54:17-55
+81-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:54:23-52
+82            </intent-filter>
+83            <intent-filter>
+83-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:56:13-59:29
+84                <action android:name="android.nfc.action.TAG_DISCOVERED" />
+84-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:57:17-76
+84-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:57:25-73
+85
+86                <category android:name="android.intent.category.DEFAULT" />
+86-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:53:17-76
+86-->C:\Developer\FieldHub Inventory\android\app\src\main\AndroidManifest.xml:53:27-73
+87            </intent-filter>
+88        </activity>
+89
+90        <service
+90-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:24:9-33:19
+91            android:name="androidx.camera.core.impl.MetadataHolderService"
+91-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:25:13-75
+92            android:enabled="false"
+92-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:26:13-36
+93            android:exported="false" >
+93-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:27:13-37
+94            <meta-data
+94-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:30:13-32:89
+95                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+95-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:31:17-103
+96                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+96-->[androidx.camera:camera-camera2:1.4.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\AndroidManifest.xml:32:17-86
+97        </service>
+98
+99        <provider
+99-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+100            android:name="androidx.startup.InitializationProvider"
+100-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+101            android:authorities="uk.fieldhub.inventory.androidx-startup"
+101-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+102            android:exported="false" >
+102-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+103            <meta-data
+103-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+104                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+104-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+105                android:value="androidx.startup" />
+105-->[androidx.emoji2:emoji2:1.3.0] C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+106            <meta-data
+106-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\997653d8152633c3595a5783433899f8\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:29:13-31:52
+107                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+107-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\997653d8152633c3595a5783433899f8\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:30:17-78
+108                android:value="androidx.startup" />
+108-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\steph\.gradle\caches\9.0.0\transforms\997653d8152633c3595a5783433899f8\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:31:17-49
+109            <meta-data
+109-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+110                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+110-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+111                android:value="androidx.startup" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+112        </provider>
 113
-114</manifest>
+114        <receiver
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+115            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+115-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+116            android:directBootAware="false"
+116-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+117            android:enabled="true"
+117-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+118            android:exported="true"
+118-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+119            android:permission="android.permission.DUMP" >
+119-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+120            <intent-filter>
+120-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+121                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+121-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+121-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+122            </intent-filter>
+123            <intent-filter>
+123-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+124                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+125            </intent-filter>
+126            <intent-filter>
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+127                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+127-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+127-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+128            </intent-filter>
+129            <intent-filter>
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+130                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+130-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+130-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+131            </intent-filter>
+132        </receiver>
+133    </application>
+134
+135</manifest>

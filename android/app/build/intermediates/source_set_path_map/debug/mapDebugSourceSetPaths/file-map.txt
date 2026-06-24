@@ -5,9 +5,29 @@ uk.fieldhub.inventory.app-packageDebugResources-3 C:\Developer\FieldHub Inventor
 uk.fieldhub.inventory.app-debug-4 C:\Developer\FieldHub Inventory\android\app\build\intermediates\merged_res\debug\mergeDebugResources
 uk.fieldhub.inventory.app-debug-5 C:\Developer\FieldHub Inventory\android\app\src\debug\res
 uk.fieldhub.inventory.app-main-6 C:\Developer\FieldHub Inventory\android\app\src\main\res
-uk.fieldhub.inventory.app-lifecycle-runtime-2.6.2-7 C:\Users\steph\.gradle\caches\9.0.0\transforms\2e326e1c8821f41daacff84faa84ca32\transformed\lifecycle-runtime-2.6.2\res
-uk.fieldhub.inventory.app-startup-runtime-1.1.1-8 C:\Users\steph\.gradle\caches\9.0.0\transforms\35fe23e644c4966fbde6cfd0bece67b3\transformed\startup-runtime-1.1.1\res
-uk.fieldhub.inventory.app-core-runtime-2.2.0-9 C:\Users\steph\.gradle\caches\9.0.0\transforms\44c31314c09bb5f58e91a8b4eb8c2182\transformed\core-runtime-2.2.0\res
-uk.fieldhub.inventory.app-profileinstaller-1.3.0-10 C:\Users\steph\.gradle\caches\9.0.0\transforms\44e94ae33ad342966b88c10e588dad30\transformed\profileinstaller-1.3.0\res
-uk.fieldhub.inventory.app-core-1.13.1-11 C:\Users\steph\.gradle\caches\9.0.0\transforms\8886259c084c41e6330ec3cb9c29289e\transformed\core-1.13.1\res
-uk.fieldhub.inventory.app-annotation-experimental-1.4.0-12 C:\Users\steph\.gradle\caches\9.0.0\transforms\b29d2d635d9e8408b89dd23a128913a1\transformed\annotation-experimental-1.4.0\res
+uk.fieldhub.inventory.app-profileinstaller-1.3.1-7 C:\Users\steph\.gradle\caches\9.0.0\transforms\05c7e1c17df49efe1c4bbeca124c2354\transformed\profileinstaller-1.3.1\res
+uk.fieldhub.inventory.app-lifecycle-livedata-core-2.6.2-8 C:\Users\steph\.gradle\caches\9.0.0\transforms\05d9d1f7265bc896b791899cd9b957bf\transformed\lifecycle-livedata-core-2.6.2\res
+uk.fieldhub.inventory.app-activity-1.7.0-9 C:\Users\steph\.gradle\caches\9.0.0\transforms\09eaaff8d4af18bcddd1b68ea6c2ad56\transformed\activity-1.7.0\res
+uk.fieldhub.inventory.app-emoji2-views-helper-1.3.0-10 C:\Users\steph\.gradle\caches\9.0.0\transforms\0d8cbaf9247cafc923c8e089933a8e00\transformed\emoji2-views-helper-1.3.0\res
+uk.fieldhub.inventory.app-fragment-1.5.4-11 C:\Users\steph\.gradle\caches\9.0.0\transforms\1c002ecc81a23797f53888f22bd31168\transformed\fragment-1.5.4\res
+uk.fieldhub.inventory.app-lifecycle-runtime-2.6.2-12 C:\Users\steph\.gradle\caches\9.0.0\transforms\2e326e1c8821f41daacff84faa84ca32\transformed\lifecycle-runtime-2.6.2\res
+uk.fieldhub.inventory.app-startup-runtime-1.1.1-13 C:\Users\steph\.gradle\caches\9.0.0\transforms\35fe23e644c4966fbde6cfd0bece67b3\transformed\startup-runtime-1.1.1\res
+uk.fieldhub.inventory.app-camera-camera2-1.4.2-14 C:\Users\steph\.gradle\caches\9.0.0\transforms\3f7efa17ab05bd8aea7a3218054474fc\transformed\camera-camera2-1.4.2\res
+uk.fieldhub.inventory.app-lifecycle-viewmodel-2.6.2-15 C:\Users\steph\.gradle\caches\9.0.0\transforms\432d6fc8e469d422b2ef0a343486265d\transformed\lifecycle-viewmodel-2.6.2\res
+uk.fieldhub.inventory.app-core-runtime-2.2.0-16 C:\Users\steph\.gradle\caches\9.0.0\transforms\44c31314c09bb5f58e91a8b4eb8c2182\transformed\core-runtime-2.2.0\res
+uk.fieldhub.inventory.app-tracing-ktx-1.2.0-17 C:\Users\steph\.gradle\caches\9.0.0\transforms\44ec5d65f971ec372772f7d05055e5c8\transformed\tracing-ktx-1.2.0\res
+uk.fieldhub.inventory.app-camera-video-1.4.2-18 C:\Users\steph\.gradle\caches\9.0.0\transforms\7063bb35d444658329e5d011ac918e87\transformed\camera-video-1.4.2\res
+uk.fieldhub.inventory.app-emoji2-1.3.0-19 C:\Users\steph\.gradle\caches\9.0.0\transforms\7856d5975a2f562fa05b736e9b4ada45\transformed\emoji2-1.3.0\res
+uk.fieldhub.inventory.app-lifecycle-viewmodel-savedstate-2.6.2-20 C:\Users\steph\.gradle\caches\9.0.0\transforms\812231522ab1e07c24f55f19f17fdf08\transformed\lifecycle-viewmodel-savedstate-2.6.2\res
+uk.fieldhub.inventory.app-core-1.13.1-21 C:\Users\steph\.gradle\caches\9.0.0\transforms\8886259c084c41e6330ec3cb9c29289e\transformed\core-1.13.1\res
+uk.fieldhub.inventory.app-core-ktx-1.13.1-22 C:\Users\steph\.gradle\caches\9.0.0\transforms\8d7a282cfa828636253a509ee8d8c153\transformed\core-ktx-1.13.1\res
+uk.fieldhub.inventory.app-savedstate-1.2.1-23 C:\Users\steph\.gradle\caches\9.0.0\transforms\93acdad5f7767e7a4bab7df752e62034\transformed\savedstate-1.2.1\res
+uk.fieldhub.inventory.app-lifecycle-process-2.6.2-24 C:\Users\steph\.gradle\caches\9.0.0\transforms\997653d8152633c3595a5783433899f8\transformed\lifecycle-process-2.6.2\res
+uk.fieldhub.inventory.app-tracing-1.2.0-25 C:\Users\steph\.gradle\caches\9.0.0\transforms\a66769961f81ec438cfc5d043ece39c6\transformed\tracing-1.2.0\res
+uk.fieldhub.inventory.app-lifecycle-livedata-2.6.2-26 C:\Users\steph\.gradle\caches\9.0.0\transforms\ab9cf57cbcb5eeae57f64d5e7bfd5133\transformed\lifecycle-livedata-2.6.2\res
+uk.fieldhub.inventory.app-camera-lifecycle-1.4.2-27 C:\Users\steph\.gradle\caches\9.0.0\transforms\ac58eeec5345ad4a55a4a72f114037d0\transformed\camera-lifecycle-1.4.2\res
+uk.fieldhub.inventory.app-camera-core-1.4.2-28 C:\Users\steph\.gradle\caches\9.0.0\transforms\b6358c8f29823e852a7d6a00ee477ace\transformed\camera-core-1.4.2\res
+uk.fieldhub.inventory.app-camera-view-1.4.2-29 C:\Users\steph\.gradle\caches\9.0.0\transforms\bec3e2ef01e284a1cf51d036443c7801\transformed\camera-view-1.4.2\res
+uk.fieldhub.inventory.app-appcompat-resources-1.7.0-30 C:\Users\steph\.gradle\caches\9.0.0\transforms\cc11f1dd78cf25c68ad0e053897a3162\transformed\appcompat-resources-1.7.0\res
+uk.fieldhub.inventory.app-annotation-experimental-1.4.1-31 C:\Users\steph\.gradle\caches\9.0.0\transforms\d5e6f832468065f84a13e891d74d6e3c\transformed\annotation-experimental-1.4.1\res
+uk.fieldhub.inventory.app-appcompat-1.7.0-32 C:\Users\steph\.gradle\caches\9.0.0\transforms\dc973fd375db425ce854809395642974\transformed\appcompat-1.7.0\res

@@ -197,19 +197,7 @@ public class MainActivity extends Activity {
             return null;
         }
 
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (intent.resolveActivity(getPackageManager()) == null) return null;
-
-        try {
-            File imageFile = File.createTempFile("fieldhub-camera-", ".jpg", getCacheDir());
-            cameraCaptureUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imageFile);
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraCaptureUri);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            return intent;
-        } catch (IOException e) {
-            cameraCaptureUri = null;
-            return null;
-        }
+        return new Intent(this, CameraActivity.class);
     }
 
     private void setupNfc() {
