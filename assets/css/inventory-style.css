@@ -1574,7 +1574,8 @@ body:has(.modal[style*="display:block"]) {
 }
 
 /* Staggered delays (Bottom whips in first, Top whips in last) */
-/* Update Staggered delays for 4 buttons (Bottom whips in first, Top whips in last) */
+/* Bottom action whips in first, followed by each action above it. */
+.fab-stack.open .quick-action-wrapper:nth-child(5) { transition-delay: 0.05s; }
 .fab-stack.open .quick-action-wrapper:nth-child(4) { transition-delay: 0.1s; }
 .fab-stack.open .quick-action-wrapper:nth-child(3) { transition-delay: 0.15s; }
 .fab-stack.open .quick-action-wrapper:nth-child(2) { transition-delay: 0.2s; }
@@ -2040,6 +2041,62 @@ body:has(.modal[style*="display:block"]) {
     margin-bottom: 0 !important;
     border-radius: 8px !important;
     box-sizing: border-box !important;
+}
+
+.fab-bug-report img {
+    width: 27px;
+    height: 27px;
+}
+
+.bug-report-modal-content {
+    width: min(94vw, 520px);
+    max-width: 520px;
+    text-align: left;
+}
+
+.bug-report-modal-content h3 {
+    margin: 0 0 14px;
+    color: #004a99;
+}
+
+.bug-report-context {
+    display: grid;
+    gap: 7px;
+    margin-bottom: 16px;
+    padding: 12px;
+    border: 1px solid #dbe4ee;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.bug-report-context > div {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
+}
+
+.bug-report-context span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.bug-report-context strong {
+    min-width: 0;
+    color: #1e293b;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.bug-report-modal-content textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.bug-report-actions {
+    margin-top: 18px;
 }
 
 .tag-picker-trigger {

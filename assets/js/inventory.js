@@ -767,6 +767,97 @@ function setModalSavingState(modalId, isSaving, label = "Saving") {
     });
 }
 
+async function getBugReportRequester() {
+    const { data: { session }, error: sessionError } = await window.db.auth.getSession();
+    if (sessionError || !session?.user) throw new Error("Your login session could not be found. Please sign in again.");
+
+    const user = session.user;
+    const meta = user.user_metadata || {};
+    let name = meta.full_name || meta.name || meta.display_name || "";
+    if (user.id) {
+        const { data: profile, error: profileError } = await window.db
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+        if (profileError) console.warn("Unable to load bug reporter profile:", profileError);
+        if (profile?.full_name) name = profile.full_name;
+    }
+
+    const email = String(user.email || "").trim();
+    name = String(name || email.split("@")[0] || "GeorgeTech user").trim();
+    if (!email) throw new Error("Your account does not have an email address.");
+    return { id: user.id, name, email };
+}
+
+async function openBugReportModal() {
+    if (!window.isAppOnline || !navigator.onLine) {
+        await customAlert("You must be online to submit a support ticket.", "Offline");
+        return;
+    }
+
+    const modal = document.getElementById("bugReportModal");
+    const summary = document.getElementById("bugRequesterSummary");
+    document.getElementById("bugReportSubject").value = "";
+    document.getElementById("bugReportDescription").value = "";
+    document.getElementById("bugReportPriority").value = "normal";
+    summary.textContent = "Loading account...";
+    modal.style.display = "flex";
+    updateTopNavVisibilityForOverlays();
+
+    try {
+        const requester = await getBugReportRequester();
+        modal.dataset.requesterId = requester.id;
+        modal.dataset.requesterName = requester.name;
+        modal.dataset.requesterEmail = requester.email;
+        summary.textContent = `${requester.name} (${requester.email})`;
+        markModalClean("bugReportModal");
+    } catch (error) {
+        closeModalClean("bugReportModal");
+        await customAlert(error.message || "Your account details could not be loaded.", "Unable to Submit");
+    }
+}
+
+async function submitBugReport() {
+    const modal = document.getElementById("bugReportModal");
+    const subject = document.getElementById("bugReportSubject").value.trim();
+    const description = document.getElementById("bugReportDescription").value.trim();
+    const priority = document.getElementById("bugReportPriority").value;
+
+    if (!subject) return customAlert("Please enter a subject for the bug report.", "Subject Required");
+    if (!description) return customAlert("Please describe what happened.", "Description Required");
+    if (!window.isAppOnline || !navigator.onLine) return customAlert("You must be online to submit a support ticket.", "Offline");
+
+    setModalSavingState("bugReportModal", true, "Submitting");
+    try {
+        const requester = await getBugReportRequester();
+        const payload = {
+            user_id: requester.id,
+            requester_name: requester.name,
+            requester_email: requester.email,
+            product: "GeorgeTech Inventory",
+            category: "Technical issue",
+            subject,
+            description: `In-App Bug Report\n\n${description}`,
+            priority
+        };
+        const { data, error } = await window.db
+            .from("support_tickets")
+            .insert(payload)
+            .select("ticket_number")
+            .single();
+        if (error) throw error;
+
+        closeModalClean("bugReportModal");
+        await customAlert(`Your report has been submitted.<br><br>Ticket: <b>${escapeHtml(data.ticket_number)}</b>`, "Bug Report Submitted");
+    } catch (error) {
+        console.error("Bug report submission failed:", error);
+        await customAlert(`The ticket could not be submitted: ${escapeHtml(error.message || "Unknown error")}`, "Submission Failed");
+    } finally {
+        setModalSavingState("bugReportModal", false);
+    }
+}
+
 function installOverlayVisibilityObserver() {
     if (window.fieldHubOverlayObserverInstalled) return;
     window.fieldHubOverlayObserverInstalled = true;

@@ -1,4 +1,4 @@
-# FieldHub Inventory Android Wrapper
+# GeorgeTech Inventory Android Wrapper
 
 Open this `android` folder in Android Studio.
 

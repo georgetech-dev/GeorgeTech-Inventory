@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Inventory | FieldHub</title>
+    <title>Inventory | GeorgeTech</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png">
@@ -181,8 +181,8 @@
 
         <div class="inventory-app-header" aria-hidden="true">
             <div class="app-branding">
-                <a class="app-logo-link" href="https://fieldhub.uk/appscreen.html" title="FieldHub">
-                    <img class="app-logo-img" src="assets/images/logo.png" alt="FieldHub">
+                <a class="app-logo-link" href="https://georgetech.uk/appscreen.html" title="GeorgeTech">
+                    <img class="app-logo-img" src="assets/images/logo.png" alt="GeorgeTech">
                 </a>
                 <div class="app-titles">
                     <h1>Inventory</h1>
@@ -1184,16 +1184,16 @@
         <footer class="inventory-footer">
             <div class="inventory-footer-brand">
                 <div class="inventory-footer-product">
-                    <img src="assets/images/logo.png" alt="FieldHub">
+                    <img src="assets/images/logo.png" alt="GeorgeTech">
                      <span>Inventory</span>
                 </div>
-                <span>FieldHub &copy; 2026</span>
+                <span>GeorgeTech &copy; 2026</span>
                 <span class="inventory-footer-version">Build v2026.06.24-camera2</span>
             </div>
             <div class="inventory-footer-support">
                 <span>For support:</span>
-                <span>visit: <a href="https://fieldhub.uk/support">FieldHub.uk/support</a></span>
-                <span>or email: <a href="mailto:support@FieldHub.uk">support@FieldHub.uk</a></span>
+                <span>visit: <a href="https://georgetech.uk/support">GeorgeTech.uk/support</a></span>
+                <span>or email: <a href="mailto:support@georgetech.uk">support@georgetech.uk</a></span>
             </div>
             <div class="inventory-footer-user">Logged in as: <span id="footerUserName">User</span></div>
             <button class="footer-logout-btn" onclick="logoutUser()">Log out</button>
@@ -1221,6 +1221,10 @@
                     <button class="fab-btn fab-mini" onclick="openQuantityAdjusterModal(); toggleFab()" title="Fast Adjust Quantity"><div class="icon icon-list-numbers-duotone"></div></button>
                     <span class="fab-label">Quick Adjust</span>
                 </div>
+                <div class="quick-action-wrapper">
+                    <button class="fab-btn fab-mini fab-bug-report" onclick="closeFab(); openBugReportModal()" title="Submit a bug report"><img src="assets/icons/chat-circle-dots-duotone.svg" alt=""></button>
+                    <span class="fab-label">Submit Bug</span>
+                </div>
             </div>
             <button class="fab-btn fab-quick" id="fabQuickBtn" onclick="toggleFab()"><div class="icon icon-lightning-a-duotone"></div></button>
         </div>
@@ -1231,6 +1235,36 @@
         <button class="fab-btn fab-item" id="fabTagBtn" onclick="openTagModal();"><div class="icon icon-tag-duotone"></div></button>
         <button class="fab-btn fab-item" id="fabCategoryBtn" onclick="openCategoryModal();"><div class="icon icon-tag-chevron-duotone"></div></button>
         <button class="fab-btn fab-item" id="fabFilterBtn" onclick="toggleFilterToolbar();"><div class="icon icon-tree-view-duotone"></div></button>
+    </div>
+
+    <div id="bugReportModal" class="modal">
+        <div class="modal-content bug-report-modal-content">
+            <h3>Submit Bug Report</h3>
+            <div class="bug-report-context">
+                <div><span>Product</span><strong>GeorgeTech Inventory</strong></div>
+                <div><span>Report type</span><strong>In-App Bug Report</strong></div>
+                <div><span>Submitted by</span><strong id="bugRequesterSummary">Loading account...</strong></div>
+            </div>
+
+            <label for="bugReportSubject">Subject</label>
+            <input id="bugReportSubject" type="text" maxlength="120" placeholder="Briefly describe the problem">
+
+            <label for="bugReportDescription">What happened?</label>
+            <textarea id="bugReportDescription" maxlength="10000" rows="7" placeholder="Tell us what you were doing, what went wrong, and what you expected to happen."></textarea>
+
+            <label for="bugReportPriority">Priority</label>
+            <select id="bugReportPriority">
+                <option value="low">Low</option>
+                <option value="normal" selected>Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+            </select>
+
+            <div class="modal-buttons bug-report-actions">
+                <button class="btn-outline" type="button" onclick="confirmCancel('bugReportModal')">Cancel</button>
+                <button class="btn-primary" type="button" onclick="submitBugReport()">Submit Ticket</button>
+            </div>
+        </div>
     </div>
 
    <div id="importWarningModal" class="modal" style="z-index: 99999; background: rgba(153, 27, 27, 0.95);">

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FieldHubInventory"
+rootProject.name = "GeorgeTechInventory"
 include ":app"

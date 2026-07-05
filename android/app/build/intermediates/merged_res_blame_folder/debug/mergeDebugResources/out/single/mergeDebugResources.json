@@ -1,7 +1,7 @@
 [
     {
-        "merged": "uk.fieldhub.inventory.app-debug-4:/drawable_ic_launcher_background.xml.flat",
-        "source": "uk.fieldhub.inventory.app-main-6:/drawable/ic_launcher_background.xml"
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\drawable_ic_launcher_background.xml.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\drawable\\ic_launcher_background.xml"
     },
     {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-xxhdpi_ic_launcher_round.png.flat",
@@ -12,8 +12,28 @@
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-xxhdpi/ic_launcher.png"
     },
     {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-xxhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-mdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-mdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-xxxhdpi\\ic_launcher.png"
+    },
+    {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-xhdpi_ic_launcher_round.png.flat",
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-hdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-hdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\xml_file_paths.xml.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\xml\\file_paths.xml"
     },
     {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-hdpi_ic_launcher.png.flat",
@@ -24,24 +44,40 @@
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-hdpi/ic_launcher_round.png"
     },
     {
-        "merged": "uk.fieldhub.inventory.app-debug-4:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "uk.fieldhub.inventory.app-main-6:/drawable/ic_launcher_foreground.xml"
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-xxxhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-hdpi\\ic_launcher_round.png"
     },
     {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-mdpi_ic_launcher.png.flat",
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-mdpi/ic_launcher.png"
     },
     {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-xxhdpi\\ic_launcher_round.png"
+    },
+    {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-xxxhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "uk.fieldhub.inventory.app-debug-4:/xml_file_paths.xml.flat",
-        "source": "uk.fieldhub.inventory.app-main-6:/xml/file_paths.xml"
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-xhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-mdpi\\ic_launcher_round.png"
     },
     {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-xxxhdpi_ic_launcher.png.flat",
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\drawable_ic_launcher_foreground.xml.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\drawable\\ic_launcher_foreground.xml"
     },
     {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-mdpi_ic_launcher_round.png.flat",
@@ -50,5 +86,9 @@
     {
         "merged": "uk.fieldhub.inventory.app-debug-4:/mipmap-xhdpi_ic_launcher.png.flat",
         "source": "uk.fieldhub.inventory.app-main-6:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-debug-4:\\mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\steph\\.gradle\\daemon\\9.0.0\\uk.fieldhub.inventory.app-main-6:\\mipmap-xhdpi\\ic_launcher.png"
     }
 ]

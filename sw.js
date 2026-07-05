@@ -1,4 +1,4 @@
-const CACHE_NAME = 'FieldHub-Inventory-v2-camera2';
+const CACHE_NAME = 'GeorgeTech-Inventory-v3-branding';
 
 // These are the core files the app NEEDS to boot up offline.
 const urlsToCache = [
@@ -11,6 +11,7 @@ const urlsToCache = [
   './assets/js/offline-engine.js',
   './assets/images/android-chrome-192x192.png',
   './assets/images/android-chrome-512x512.png',
+  './assets/images/android-chrome-maskable-512x512.png',
   './assets/images/logo.png',
   // External libraries we rely on
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
