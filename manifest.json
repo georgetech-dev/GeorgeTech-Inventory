@@ -1,6 +1,6 @@
 {
   "name": "GeorgeTech Inventory",
-  "short_name": "GeorgeTech",
+  "short_name": "Inventory",
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",
