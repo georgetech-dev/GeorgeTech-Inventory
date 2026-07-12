@@ -683,6 +683,50 @@ function closeTopmostAppModal(modal) {
     return true;
 }
 
+let georgeTechBackExitArmedAt = 0;
+let georgeTechHistoryGuardReady = false;
+
+function showBackExitHint() {
+    let hint = document.getElementById("georgeTechBackExitHint");
+    if (!hint) {
+        hint = document.createElement("div");
+        hint.id = "georgeTechBackExitHint";
+        hint.className = "back-exit-hint";
+        hint.textContent = "Press back again to exit";
+        document.body.appendChild(hint);
+    }
+    hint.classList.add("show");
+    window.clearTimeout(hint._hideTimer);
+    hint._hideTimer = window.setTimeout(() => hint.classList.remove("show"), 2200);
+}
+
+function installGeorgeTechBrowserBackGuard() {
+    if (georgeTechHistoryGuardReady || !window.history?.pushState) return;
+    georgeTechHistoryGuardReady = true;
+    history.replaceState({ georgeTechApp: true }, "", location.href);
+    history.pushState({ georgeTechAppGuard: true }, "", location.href);
+    window.addEventListener("popstate", () => {
+        Promise.resolve(window.handleGeorgeTechBackButton?.()).then(handled => {
+            if (handled) {
+                georgeTechBackExitArmedAt = 0;
+                history.pushState({ georgeTechAppGuard: true }, "", location.href);
+                return;
+            }
+            const now = Date.now();
+            if (now - georgeTechBackExitArmedAt < 2500) {
+                history.back();
+                return;
+            }
+            georgeTechBackExitArmedAt = now;
+            showBackExitHint();
+            history.pushState({ georgeTechAppGuard: true }, "", location.href);
+        }).catch(error => {
+            console.error("Browser back handler failed:", error);
+            history.pushState({ georgeTechAppGuard: true }, "", location.href);
+        });
+    });
+}
+
 async function navigateBackInItemLocations() {
     if (!document.getElementById("pageItems")?.classList.contains("active")) return false;
 
@@ -1617,7 +1661,7 @@ function showPage(pageId) {
     ITEMS BROWSER LOGIC (DEXIE)
 ========================================================= */
 async function loadRootLocations() {
-    currentLocationId = null; locationHistory = [];
+    currentLocationId = null; locationHistory = []; locationBackStack = [];
     const container = document.getElementById("breadcrumb");
     if (container) container.innerHTML = '<span class="breadcrumb-link active">Items</span>';
     const allLocs = await localDB.locations.toArray();
@@ -1655,6 +1699,7 @@ function openAddLocationForCurrentItemFolder() {
 }
 
 async function loadUnallocatedItems() {
+    currentLocationId = "unallocated";
     const container = document.getElementById("breadcrumb");
     if (container) container.innerHTML = `<span class="breadcrumb-link" onclick="loadRootLocations()">Items</span><span class="breadcrumb-separator"> > </span><span class="breadcrumb-link active">Unallocated Items</span>`;
     currentBrowserLocations = [];
@@ -6867,6 +6912,7 @@ function setImportMode(mode, element) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  installGeorgeTechBrowserBackGuard();
   const dropdown = document.getElementById('searchDropdown');
   const trigger = document.getElementById('dropdownTrigger');
   const menu = document.getElementById('dropdownMenu');
