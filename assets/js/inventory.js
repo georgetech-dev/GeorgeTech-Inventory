@@ -685,6 +685,7 @@ function closeTopmostAppModal(modal) {
 
 let georgeTechBackExitArmedAt = 0;
 let georgeTechHistoryGuardReady = false;
+let georgeTechAllowBrowserExit = false;
 
 function showBackExitHint() {
     let hint = document.getElementById("georgeTechBackExitHint");
@@ -704,33 +705,52 @@ function installGeorgeTechBrowserBackGuard() {
     if (georgeTechHistoryGuardReady || !window.history?.pushState) return;
     georgeTechHistoryGuardReady = true;
     history.replaceState({ georgeTechApp: true }, "", location.href);
-    history.pushState({ georgeTechAppGuard: true }, "", location.href);
+    history.pushState({ georgeTechAppGuard: 1 }, "", location.href);
+    history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
     window.addEventListener("popstate", () => {
+        if (georgeTechAllowBrowserExit) return;
         try {
             if (window.handleGeorgeTechBackButton?.()) {
                 georgeTechBackExitArmedAt = 0;
-                history.pushState({ georgeTechAppGuard: true }, "", location.href);
+                history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
                 return;
             }
         } catch (error) {
             console.error("Browser back handler failed:", error);
-            history.pushState({ georgeTechAppGuard: true }, "", location.href);
+            history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
             return;
         }
 
         const now = Date.now();
         if (now - georgeTechBackExitArmedAt < 2500) {
-            history.back();
+            georgeTechAllowBrowserExit = true;
+            history.go(-2);
             return;
         }
         georgeTechBackExitArmedAt = now;
         showBackExitHint();
-        history.pushState({ georgeTechAppGuard: true }, "", location.href);
+        history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
     });
 }
 
 async function navigateBackInItemLocations() {
     if (!document.getElementById("pageItems")?.classList.contains("active")) return false;
+
+    if (currentLocationId && currentLocationId !== "unallocated") {
+        const current = await localDB.locations.get(currentLocationId);
+        const stackedPrevious = locationBackStack.length ? locationBackStack[locationBackStack.length - 1] : undefined;
+        if (stackedPrevious !== undefined && String(stackedPrevious || "") !== String(current?.parent_id || "")) {
+            const previous = locationBackStack.pop();
+            if (!previous) await loadRootLocations();
+            else if (previous === "unallocated") await loadUnallocatedItems();
+            else await loadLocation(previous);
+            return true;
+        }
+        if (locationBackStack.length) locationBackStack.pop();
+        if (current?.parent_id) await loadLocation(current.parent_id);
+        else await loadRootLocations();
+        return true;
+    }
 
     if (locationBackStack.length) {
         const previous = locationBackStack.pop();
@@ -745,10 +765,7 @@ async function navigateBackInItemLocations() {
         await loadRootLocations();
         return true;
     }
-    const current = await localDB.locations.get(currentLocationId);
-    if (current?.parent_id) await loadLocation(current.parent_id);
-    else await loadRootLocations();
-    return true;
+    return false;
 }
 
 window.handleGeorgeTechBackButton = function() {
