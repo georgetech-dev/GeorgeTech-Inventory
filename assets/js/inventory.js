@@ -706,24 +706,26 @@ function installGeorgeTechBrowserBackGuard() {
     history.replaceState({ georgeTechApp: true }, "", location.href);
     history.pushState({ georgeTechAppGuard: true }, "", location.href);
     window.addEventListener("popstate", () => {
-        Promise.resolve(window.handleGeorgeTechBackButton?.()).then(handled => {
-            if (handled) {
+        try {
+            if (window.handleGeorgeTechBackButton?.()) {
                 georgeTechBackExitArmedAt = 0;
                 history.pushState({ georgeTechAppGuard: true }, "", location.href);
                 return;
             }
-            const now = Date.now();
-            if (now - georgeTechBackExitArmedAt < 2500) {
-                history.back();
-                return;
-            }
-            georgeTechBackExitArmedAt = now;
-            showBackExitHint();
-            history.pushState({ georgeTechAppGuard: true }, "", location.href);
-        }).catch(error => {
+        } catch (error) {
             console.error("Browser back handler failed:", error);
             history.pushState({ georgeTechAppGuard: true }, "", location.href);
-        });
+            return;
+        }
+
+        const now = Date.now();
+        if (now - georgeTechBackExitArmedAt < 2500) {
+            history.back();
+            return;
+        }
+        georgeTechBackExitArmedAt = now;
+        showBackExitHint();
+        history.pushState({ georgeTechAppGuard: true }, "", location.href);
     });
 }
 
