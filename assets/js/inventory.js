@@ -2465,16 +2465,61 @@ function stopPhotoCaptureStream() {
     }
 }
 
+async function getRearPhotoCameraDevices() {
+    const devices = await getOrFetchCameras();
+    const rearDevices = devices.filter(device => {
+        const label = String(device.label || "").toLowerCase();
+        return !label || (!label.includes("front") && !label.includes("user") && !label.includes("selfie"));
+    });
+    return rearDevices.length ? rearDevices : devices;
+}
+
 async function openPhotoCaptureModal(mode) {
     photoCaptureMode = mode;
     stopPhotoCaptureStream();
-    fallbackPhotoFilePicker(mode);
+    const modal = ensurePhotoCaptureModal();
+    const video = document.getElementById("photoCaptureVideo");
+    if (!navigator.mediaDevices?.getUserMedia || !video) {
+        fallbackPhotoFilePicker(mode);
+        return;
+    }
+
+    modal.style.display = "flex";
+    updateTopNavVisibilityForOverlays();
+    photoSettingsDirty = false;
+    photoFlashMode = "off";
+    photoRuntimeZoom = Number(userSettings.photoZoom) || 1;
+
+    try {
+        const devices = await getRearPhotoCameraDevices();
+        const savedId = userSettings.photoCameraId;
+        const savedDevice = devices.find(device => String(device.id) === String(savedId));
+        const constraints = savedDevice
+            ? { deviceId: { exact: savedDevice.id } }
+            : { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+        photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+        video.srcObject = photoCaptureStream;
+        await video.play();
+        const track = getVideoTrackFromElement(video);
+        photoRuntimeCameraId = track?.getSettings?.().deviceId || savedDevice?.id || "AUTO_REAR";
+        photoFacingMode = track?.getSettings?.().facingMode || "environment";
+        photoRuntimeZoom = await applyCameraZoom(video, photoRuntimeZoom);
+        video.dataset.currentZoom = photoRuntimeZoom;
+        configurePhotoZoomControl(video);
+        installPinchZoom(video, setPhotoCameraZoom);
+        updatePhotoCameraControls();
+    } catch (error) {
+        console.warn("In-app camera unavailable; falling back to Android capture input.", error);
+        closePhotoCaptureModal();
+        fallbackPhotoFilePicker(mode);
+    }
 }
 
 function closePhotoCaptureModal() {
     stopPhotoCaptureStream();
     const modal = document.getElementById("photoCaptureModal");
     if (modal) modal.style.display = "none";
+    updateTopNavVisibilityForOverlays();
 }
 
 function fallbackPhotoFilePicker(mode = photoCaptureMode) {
@@ -3004,7 +3049,7 @@ async function setPhotoCameraZoom(value) {
 }
 
 async function switchPhotoCamera() {
-    const devices = await getOrFetchCameras();
+    const devices = await getRearPhotoCameraDevices();
     if (!devices || devices.length < 2) {
         await customAlert("Only one camera is available on this device.", "Camera Unavailable");
         return;
