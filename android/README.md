@@ -5,7 +5,7 @@ Open this `android` folder in Android Studio.
 The app is a native Android WebView shell for:
 
 ```text
-https://parts.fieldhub.uk/index.html
+https://parts.georgetech.uk/index.html
 ```
 
 ## Supported Native Capabilities

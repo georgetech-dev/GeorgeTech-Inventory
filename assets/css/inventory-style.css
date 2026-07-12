@@ -992,9 +992,9 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     display: none;
     position: fixed;
     z-index: 20050;
-    width: min(94vw, 520px);
+    width: min(96vw, 620px);
     height: min(80vh, 620px);
-    max-width: 520px;
+    max-width: 620px;
     max-height: calc(100dvh - 24px);
     overflow: hidden;
     background: #ffffff;
@@ -1123,7 +1123,7 @@ button { font-family: 'Inter', sans-serif; letter-spacing: 0.3px; }
     min-height: 0;
     overflow-y: auto;
     align-content: start;
-    padding: 2px 2px 12px;
+    padding: 8px 2px 12px;
     overscroll-behavior: contain;
 }
 
@@ -2108,6 +2108,8 @@ body:has(.modal[style*="display:block"]) {
 .item-form-tag-pills-row {
     display: flex !important;
     flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
     gap: 6px !important;
     margin-top: 8px !important;
     margin-bottom: 10px !important;
@@ -2130,10 +2132,20 @@ body:has(.modal[style*="display:block"]) {
 }
 
 .item-form-tag-pill {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    max-width: 100%;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
     padding: 6px 14px !important;
     border-radius: 20px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
+    background: #e0f2fe !important;
+    border-color: #bae6fd !important;
+    color: #0369a1 !important;
+    white-space: nowrap;
 }
 
 .item-ai-description-control {

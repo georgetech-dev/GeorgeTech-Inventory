@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace "uk.fieldhub.inventory"
+    namespace "uk.georgetech.inventory"
     compileSdk 35
 
     compileOptions {
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "uk.fieldhub.inventory"
+        applicationId "uk.georgetech.inventory"
         minSdk 26
         targetSdk 34
         versionCode 1

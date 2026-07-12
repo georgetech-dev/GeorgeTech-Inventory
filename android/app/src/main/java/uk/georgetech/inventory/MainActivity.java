@@ -1,4 +1,4 @@
-package uk.fieldhub.inventory;
+package uk.georgetech.inventory;
 
 import android.Manifest;
 import android.app.Activity;
@@ -44,8 +44,8 @@ import java.nio.charset.Charset;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
-    private static final String APP_URL = "https://parts.fieldhub.uk/index.html";
-    private static final String NFC_LOG_TAG = "FieldHubNFC";
+    private static final String APP_URL = "https://parts.georgetech.uk/index.html";
+    private static final String NFC_LOG_TAG = "GeorgeTechNFC";
     private static final int REQ_WEB_PERMISSION = 1001;
     private static final int REQ_FILE_CHOOSER = 1002;
 
@@ -264,7 +264,7 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (webView != null && !backEvaluationPending) {
             backEvaluationPending = true;
-            String script = "(function(){try{return !!(window.handleFieldHubBackButton&&window.handleFieldHubBackButton());}catch(error){console.error('Back handler failed',error);return false;}})();";
+            String script = "(function(){try{return !!(window.handleGeorgeTechBackButton&&window.handleGeorgeTechBackButton());}catch(error){console.error('Back handler failed',error);return false;}})();";
             webView.evaluateJavascript(script, result -> {
                 backEvaluationPending = false;
                 if ("true".equalsIgnoreCase(String.valueOf(result))) {
@@ -397,28 +397,28 @@ public class MainActivity extends Activity {
     private void injectNfcPolyfill() {
         String script =
                 "(function(){"
-                        + "if(window.__fieldHubNfcInstalled)return;"
-                        + "window.__fieldHubNfcInstalled=true;"
-                        + "window.__fieldHubNativeNfcStatus={installed:true,lastToken:null,lastSeenAt:null,dispatchCount:0};"
-                        + "window.__fieldHubNfcReaders=[];"
+                        + "if(window.__georgeTechNfcInstalled)return;"
+                        + "window.__georgeTechNfcInstalled=true;"
+                        + "window.__georgeTechNativeNfcStatus={installed:true,lastToken:null,lastSeenAt:null,dispatchCount:0};"
+                        + "window.__georgeTechNfcReaders=[];"
                         + "window.NDEFReader=function(){};"
                         + "window.NDEFReader.prototype.scan=function(options){"
                         + "var reader=this;"
-                        + "window.__fieldHubNfcReaders.push(reader);"
+                        + "window.__georgeTechNfcReaders.push(reader);"
                         + "if(options&&options.signal){options.signal.addEventListener('abort',function(){"
-                        + "window.__fieldHubNfcReaders=window.__fieldHubNfcReaders.filter(function(r){return r!==reader;});"
+                        + "window.__georgeTechNfcReaders=window.__georgeTechNfcReaders.filter(function(r){return r!==reader;});"
                         + "});}"
                         + "return Promise.resolve();"
                         + "};"
-                        + "window.__fieldHubDispatchNfc=function(text){"
-                        + "window.__fieldHubNativeNfcStatus={installed:true,lastToken:text,lastSeenAt:new Date().toISOString(),dispatchCount:((window.__fieldHubNativeNfcStatus&&window.__fieldHubNativeNfcStatus.dispatchCount)||0)+1};"
+                        + "window.__georgeTechDispatchNfc=function(text){"
+                        + "window.__georgeTechNativeNfcStatus={installed:true,lastToken:text,lastSeenAt:new Date().toISOString(),dispatchCount:((window.__georgeTechNativeNfcStatus&&window.__georgeTechNativeNfcStatus.dispatchCount)||0)+1};"
                         + "var bytes=(window.TextEncoder?Array.from(new TextEncoder().encode(text)):text.split('').map(function(c){return c.charCodeAt(0);}));"
                         + "var payload=new Uint8Array(bytes.length+3);"
                         + "payload[0]=2;payload[1]=101;payload[2]=110;"
                         + "for(var i=0;i<bytes.length;i++)payload[i+3]=bytes[i];"
                         + "var event={serialNumber:text,message:{records:[{recordType:'text',data:payload.buffer}]}};"
-                        + "window.__fieldHubNfcReaders.slice().forEach(function(reader){if(typeof reader.onreading==='function')reader.onreading(event);});"
-                        + "window.dispatchEvent(new CustomEvent('fieldhub-native-nfc',{detail:text}));"
+                        + "window.__georgeTechNfcReaders.slice().forEach(function(reader){if(typeof reader.onreading==='function')reader.onreading(event);});"
+                        + "window.dispatchEvent(new CustomEvent('georgetech-native-nfc',{detail:text}));"
                         + "};"
                         + "})();";
         webView.evaluateJavascript(script, null);
@@ -427,7 +427,7 @@ public class MainActivity extends Activity {
     private void dispatchNfcToWeb(String token) {
         if (webView == null) return;
         Log.d(NFC_LOG_TAG, "dispatchNfcToWeb token=" + token);
-        String script = "window.__fieldHubDispatchNfc && window.__fieldHubDispatchNfc(" + JSONObject.quote(token) + ");";
+        String script = "window.__georgeTechDispatchNfc && window.__georgeTechDispatchNfc(" + JSONObject.quote(token) + ");";
         webView.post(() -> webView.evaluateJavascript(script, null));
     }
 }

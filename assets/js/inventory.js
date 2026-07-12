@@ -51,6 +51,7 @@ let userSettings = {
     widths: { name: '25%', quantity: '10%', barcode: '15%', nfc: '15%', category: '15%', tags: '20%' },
     defaultCameraId: 'AUTO_REAR',
     defaultZoom: 1.5,
+    defaultTorchEnabled: false,
     photoCameraId: 'AUTO_REAR',
     photoZoom: 1
 };
@@ -704,7 +705,7 @@ async function navigateBackInItemLocations() {
     return true;
 }
 
-window.handleFieldHubBackButton = function() {
+window.handleGeorgeTechBackButton = function() {
     const lightbox = document.getElementById("review-lightbox");
     if (lightbox && window.getComputedStyle(lightbox).display !== "none") {
         closeLightbox();
@@ -859,8 +860,8 @@ async function submitBugReport() {
 }
 
 function installOverlayVisibilityObserver() {
-    if (window.fieldHubOverlayObserverInstalled) return;
-    window.fieldHubOverlayObserverInstalled = true;
+    if (window.georgeTechOverlayObserverInstalled) return;
+    window.georgeTechOverlayObserverInstalled = true;
     const observer = new MutationObserver(updateTopNavVisibilityForOverlays);
     if (document.body) observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["style", "class"] });
     updateTopNavVisibilityForOverlays();
@@ -2486,7 +2487,9 @@ function fallbackPhotoFilePicker(mode = photoCaptureMode) {
         "edit-temp-location": "editTempLocationCameraInput"
     };
     const input = document.getElementById(inputMap[mode]);
-    if (input) input.click();
+    if (!input) return;
+    input.value = "";
+    input.click();
 }
 
 function addCapturedPhotoToTarget(file, mode) {
@@ -4443,10 +4446,11 @@ async function handleGlobalSearch(term) {
 
     const items = await localDB.items.toArray(); 
     if (!items) return;
-    const sections = { name: [], location: [], tag: [], category: [] };
+    const sections = { name: [], location: [], tag: [], category: [], description: [] };
 
     items.forEach(item => {
         const nameMatches = item.name?.toLowerCase().includes(lowerTerm);
+        const descriptionMatches = (item.description || "").toLowerCase().includes(lowerTerm);
         const locationPath = item.location_id ? buildLocationPath(item.location_id).toLowerCase() : "unallocated items";
         const locationMatches = locationPath.includes(lowerTerm);
         const barcodeMatches = (item.barcode && item.barcode.toLowerCase().includes(lowerTerm)) || (item.nfc_tag && item.nfc_tag.toLowerCase().includes(lowerTerm));
@@ -4462,9 +4466,10 @@ async function handleGlobalSearch(term) {
 
         if (filterType === "all") {
             if (nameMatches) sections.name.push(item); if (locationMatches) sections.location.push(item);
+            if (descriptionMatches) sections.description.push(item);
             if (lowerTerm && itemTagsArray.some(t => t.toLowerCase().includes(lowerTerm))) sections.tag.push(item);
             if (item.category?.toLowerCase().includes(lowerTerm)) sections.category.push(item);
-        } else if (filterType === "name" && nameMatches) sections.name.push(item); else if (filterType === "location" && locationMatches) sections.location.push(item); else if (filterType === "barcode" && barcodeMatches) sections.name.push(item); else if (filterType === "tag" && tagPillsMatch && textTagMatch) sections.tag.push(item); else if (filterType === "category" && catPillMatch && textCatMatch) sections.category.push(item);
+        } else if (filterType === "name" && (nameMatches || descriptionMatches)) sections.name.push(item); else if (filterType === "location" && locationMatches) sections.location.push(item); else if (filterType === "barcode" && barcodeMatches) sections.name.push(item); else if (filterType === "tag" && tagPillsMatch && textTagMatch) sections.tag.push(item); else if (filterType === "category" && catPillMatch && textCatMatch) sections.category.push(item);
     });
     renderSectionedSearchResults(sections, filterType);
 }
@@ -4472,7 +4477,7 @@ async function handleGlobalSearch(term) {
 function renderSectionedSearchResults(sections, filterType) {
     let combinedResults = [];
     if (filterType === "all") {
-        combinedResults = [...sections.name, ...sections.location, ...sections.tag, ...sections.category];
+        combinedResults = [...sections.name, ...sections.description, ...sections.location, ...sections.tag, ...sections.category];
     } else if (filterType === "name" || filterType === "barcode") {
         combinedResults = [...sections.name];
     } else if (filterType === "location") {
@@ -4634,11 +4639,11 @@ function setupTagSearchInput(mode) {
         const viewportHeight = viewport?.height || window.innerHeight;
         const targetWidth = modalRect?.width || trigger.getBoundingClientRect().width;
         list.style.left = "50%";
-        list.style.width = `${Math.min(Math.max(targetWidth, 280), window.innerWidth - 24, 520)}px`;
+        list.style.width = `${Math.min(Math.max(targetWidth, 320), window.innerWidth - 16, 620)}px`;
         list.style.transform = "translateX(-50%)";
         const bounds = getFloatingPanelBounds(list);
         list.style.maxHeight = `${bounds.maxHeight}px`;
-        if (list.dataset.saved !== "true") list.style.height = `${Math.min(620, bounds.maxHeight)}px`;
+        if (list.dataset.saved !== "true") list.style.height = `${bounds.maxHeight}px`;
         else if (list.getBoundingClientRect().height > bounds.maxHeight) list.style.height = `${bounds.maxHeight}px`;
         if (list.dataset.saved !== "true") {
             list.style.top = `${bounds.minTop}px`;
@@ -4648,6 +4653,7 @@ function setupTagSearchInput(mode) {
         }
         list.style.display = "block";
         list.classList.add("open");
+        window.setTimeout(() => pickerSearch.focus({ preventScroll: true }), 80);
     };
 
     trigger.addEventListener("click", event => {
@@ -4657,7 +4663,7 @@ function setupTagSearchInput(mode) {
         renderOptions();
     });
     pickerSearch.addEventListener("input", renderOptions);
-    document.addEventListener("fieldhub:tags-updated", () => {
+    document.addEventListener("georgetech:tags-updated", () => {
         if (list.classList.contains("open")) renderOptions();
     });
     window.visualViewport?.addEventListener("resize", () => {
@@ -4737,7 +4743,7 @@ function setupFloatingPanelDrag(panel, handle) {
 
 function restoreFloatingPanelState(panel) {
     try {
-        const saved = JSON.parse(localStorage.getItem("fieldhubTagPickerLayout") || "{}");
+        const saved = JSON.parse(localStorage.getItem("georgeTechTagPickerLayout") || "{}");
         const bounds = getFloatingPanelBounds(panel);
         if (Number.isFinite(saved.top)) {
             panel.style.top = `${Math.max(bounds.minTop, Math.min(bounds.maxTop, saved.top))}px`;
@@ -4754,7 +4760,7 @@ function saveFloatingPanelState(panel) {
     if (!panel) return;
     const rect = panel.getBoundingClientRect();
     const bounds = getFloatingPanelBounds(panel);
-    localStorage.setItem("fieldhubTagPickerLayout", JSON.stringify({
+    localStorage.setItem("georgeTechTagPickerLayout", JSON.stringify({
         top: Math.round(Math.max(bounds.minTop, Math.min(bounds.maxTop, rect.top))),
         height: Math.round(Math.max(190, Math.min(bounds.maxHeight, rect.height)))
     }));
@@ -4803,12 +4809,14 @@ function renderActiveTagPills(mode) {
     container.className = "item-form-tag-pills-row";
     container.style.display = "flex";
     container.style.flexWrap = "wrap";
+    container.style.alignItems = "flex-start";
+    container.style.justifyContent = "flex-start";
     container.style.gap = "6px";
     container.style.marginTop = "8px";
     container.style.marginBottom = "10px";
     container.innerHTML = "";
     targetArray.forEach(tag => {
-        const pill = document.createElement("span"); pill.className = "tag-pill item-form-tag-pill"; pill.style.cssText = "display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; border-color:#bae6fd; color:#0369a1;";
+        const pill = document.createElement("span"); pill.className = "tag-pill item-form-tag-pill";
         pill.innerHTML = `${tag} <b style="cursor:pointer; color:#ef4444;">&times;</b>`; pill.querySelector("b").onclick = () => removeSelectedTagBadge(mode, tag); container.appendChild(pill);
     });
 }
@@ -4877,6 +4885,8 @@ async function saveCentralTag() {
     if (!name) return await customAlert("Please enter a tag label designation.", "Missing Label"); 
     const existing = globalCachedTags.find(t => t.name.toLowerCase() === name.toLowerCase());
     if (existing && existing.id !== editingTagTargetId) return await customAlert("Tag already exists.", "Duplicate Error");
+    const preservedAddCategory = document.getElementById("itemCategorySelect")?.value || "";
+    const preservedEditCategory = document.getElementById("editItemCategory")?.value || "";
 
     let response;
     if (editingTagTargetId) {
@@ -4889,7 +4899,9 @@ async function saveCentralTag() {
         closeModal('centralTagModal'); 
         logAction("CREATE/UPDATE", "Tag", name, "Modified system tag"); 
         await refreshAllDataFromLocal(); 
-        document.dispatchEvent(new CustomEvent("fieldhub:tags-updated"));
+        if (document.getElementById("itemCategorySelect")) document.getElementById("itemCategorySelect").value = preservedAddCategory;
+        if (document.getElementById("editItemCategory")) document.getElementById("editItemCategory").value = preservedEditCategory;
+        document.dispatchEvent(new CustomEvent("georgetech:tags-updated"));
         if (isSubModalContextCall) { 
             const currentActiveMode = document.getElementById("itemEditModal").style.display === 'flex' ? 'edit' : 'add'; 
             handleTagSelection(currentActiveMode, name); 
@@ -5039,7 +5051,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
         scannerSettingsDirty = false;
     }
     scannerRestarting = false;
-    scannerTorchEnabled = false;
+    scannerTorchEnabled = !!userSettings.defaultTorchEnabled;
 
     const cancelBtn = document.getElementById("barcodeScannerCancelBtn");
     if (cancelBtn) {
@@ -5138,6 +5150,7 @@ window.openBarcodeScannerModal = async function(targetInputId = null) {
         const video = container.querySelector("video");
         installPinchZoom(video, applyDynamicZoom);
         if (typeof applyDynamicZoom === 'function') applyDynamicZoom(defaultZoom, false);
+        if (scannerTorchEnabled) setScannerTorchState(true, false);
     }).catch(err => {
         console.error("Camera Init Error:", err);
     });
@@ -5158,10 +5171,10 @@ window.applyDynamicZoom = async function(val, markDirty = true) {
     if (saveBtn) saveBtn.style.display = scannerSettingsDirty ? "inline-flex" : "none";
 };
 
-window.toggleScannerTorch = async function() {
+async function setScannerTorchState(enabled, markDirty = true) {
     const video = document.querySelector("#scannerReaderContainer video");
     const track = getVideoTrackFromElement(video);
-    scannerTorchEnabled = !scannerTorchEnabled;
+    scannerTorchEnabled = !!enabled;
     const supported = await setTrackTorch(track, scannerTorchEnabled);
     if (!supported) scannerTorchEnabled = false;
     const button = document.getElementById("scannerTorchButton");
@@ -5169,11 +5182,19 @@ window.toggleScannerTorch = async function() {
         button.innerHTML = `<img src="assets/icons/${scannerTorchEnabled ? "lightning" : "lightning-slash"}.svg" alt=""><span>${scannerTorchEnabled ? "On" : "Off"}</span>`;
         button.setAttribute("aria-label", `Turn torch ${scannerTorchEnabled ? "off" : "on"}`);
     }
+    if (markDirty) scannerSettingsDirty = true;
+    const saveBtn = document.getElementById("scannerSaveSettingsButton");
+    if (saveBtn) saveBtn.style.display = scannerSettingsDirty ? "inline-flex" : "none";
+}
+
+window.toggleScannerTorch = async function() {
+    await setScannerTorchState(!scannerTorchEnabled, true);
 };
 
 window.saveScannerCameraSettings = async function() {
     userSettings.defaultCameraId = scannerRuntimeCameraId || "AUTO_REAR";
     userSettings.defaultZoom = scannerRuntimeZoom || 1;
+    userSettings.defaultTorchEnabled = !!scannerTorchEnabled;
     await saveInventorySettings();
     scannerSettingsDirty = false;
     const saveBtn = document.getElementById("scannerSaveSettingsButton");
@@ -5338,9 +5359,9 @@ window.handleNfcButtonPress = async function(targetInputId) {
     await customAlert("Tap an NFC tag now. It will be added automatically while this modal is open.", "NFC Ready");
 };
 
-if (!window.fieldHubNativeNfcListenerInstalled) {
-    window.fieldHubNativeNfcListenerInstalled = true;
-    window.addEventListener("fieldhub-native-nfc", event => {
+if (!window.georgeTechNativeNfcListenerInstalled) {
+    window.georgeTechNativeNfcListenerInstalled = true;
+    window.addEventListener("georgetech-native-nfc", event => {
         const token = String(event.detail || "").trim();
         if (!token) return;
         const nfcStatusDiv = document.getElementById("nfcStatusDisplay");
@@ -5384,7 +5405,7 @@ function setNfcDiagnosticsMessage(message, state = "neutral") {
 }
 
 function refreshNfcDiagnosticsStatus() {
-    const status = window.__fieldHubNativeNfcStatus || {};
+    const status = window.__georgeTechNativeNfcStatus || {};
     const logEl = document.getElementById("nfcDiagnosticsLog");
     const tokenEl = document.getElementById("nfcDiagnosticsToken");
     if (tokenEl) tokenEl.value = status.lastToken || "";
@@ -5419,11 +5440,11 @@ async function openNfcDiagnosticsModal() {
         await ndef.scan({ signal: diagnosticsNfcAbortController.signal });
         ndef.onreading = event => {
             const token = getNfcTextFromEvent(event);
-            window.__fieldHubNativeNfcStatus = {
+            window.__georgeTechNativeNfcStatus = {
                 installed: true,
                 lastToken: token,
                 lastSeenAt: new Date().toISOString(),
-                dispatchCount: ((window.__fieldHubNativeNfcStatus?.dispatchCount) || 0) + 1
+                dispatchCount: ((window.__georgeTechNativeNfcStatus?.dispatchCount) || 0) + 1
             };
             setNfcDiagnosticsMessage("Web NFC tag received.", "ok");
             refreshNfcDiagnosticsStatus();

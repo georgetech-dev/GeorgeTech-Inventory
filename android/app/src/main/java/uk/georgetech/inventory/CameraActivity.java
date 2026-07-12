@@ -1,4 +1,4 @@
-package uk.fieldhub.inventory;
+package uk.georgetech.inventory;
 
 import android.Manifest;
 import android.app.Activity;
@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 
 public class CameraActivity extends androidx.appcompat.app.AppCompatActivity {
     private static final int REQUEST_CAMERA = 2101;
-    private static final String PREFS = "fieldhub_camera";
+    private static final String PREFS = "georgetech_camera";
     private static final String PREF_CAMERA_ID = "camera_id";
     private static final String PREF_ZOOM = "zoom_ratio";
 
@@ -190,7 +190,13 @@ public class CameraActivity extends androidx.appcompat.app.AppCompatActivity {
             try {
                 cameraProvider = future.get();
                 cameras.clear();
-                cameras.addAll(cameraProvider.getAvailableCameraInfos());
+                for (CameraInfo info : cameraProvider.getAvailableCameraInfos()) {
+                    Integer facing = info.getLensFacing();
+                    if (facing != null && facing == CameraSelector.LENS_FACING_BACK) {
+                        cameras.add(info);
+                    }
+                }
+                if (cameras.isEmpty()) cameras.addAll(cameraProvider.getAvailableCameraInfos());
                 cameras.sort(Comparator.comparing(this::cameraId));
                 String savedId = preferences.getString(PREF_CAMERA_ID, "");
                 cameraIndex = 0;
@@ -283,7 +289,7 @@ public class CameraActivity extends androidx.appcompat.app.AppCompatActivity {
         if (imageCapture == null || shutterButton == null) return;
         shutterButton.setEnabled(false);
         try {
-            File output = File.createTempFile("fieldhub-camera-", ".jpg", getCacheDir());
+            File output = File.createTempFile("georgetech-camera-", ".jpg", getCacheDir());
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", output);
             ImageCapture.OutputFileOptions options = new ImageCapture.OutputFileOptions.Builder(output).build();
             imageCapture.takePicture(options, cameraExecutor, new ImageCapture.OnImageSavedCallback() {
