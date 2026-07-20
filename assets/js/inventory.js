@@ -1007,16 +1007,29 @@ function installGeorgeTechCloseWatcherBackHandler() {
             } else {
                 requestGeorgeTechBrowserExitConfirmation();
             }
+            window.setTimeout(refreshGeorgeTechCloseWatcherBackHandler, 0);
         });
         georgeTechCloseWatcher.addEventListener("close", () => {
             logGeorgeTechBack("closewatcher-close");
-            window.__georgeTechCloseWatcherInstalled = false;
-            window.setTimeout(installGeorgeTechCloseWatcherBackHandler, 0);
+            window.setTimeout(refreshGeorgeTechCloseWatcherBackHandler, 0);
         });
         logGeorgeTechBack("closewatcher-installed");
     } catch (error) {
+        window.__georgeTechCloseWatcherInstalled = false;
         logGeorgeTechBack("closewatcher-error", { error: String(error?.message || error) });
     }
+}
+
+function refreshGeorgeTechCloseWatcherBackHandler() {
+    if (typeof window.CloseWatcher !== "function") return;
+    try {
+        georgeTechCloseWatcher?.destroy?.();
+    } catch (error) {
+        logGeorgeTechBack("closewatcher-destroy-error", { error: String(error?.message || error) });
+    }
+    georgeTechCloseWatcher = null;
+    window.__georgeTechCloseWatcherInstalled = false;
+    installGeorgeTechCloseWatcherBackHandler();
 }
 
 function setModalSavingState(modalId, isSaving, label = "Saving") {
