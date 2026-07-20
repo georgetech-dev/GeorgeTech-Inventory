@@ -688,6 +688,7 @@ let georgeTechAllowBrowserExit = false;
 let georgeTechExitConfirmOpen = false;
 let georgeTechBackDebugEnabled = true;
 let georgeTechSuppressHistoryPush = false;
+let georgeTechOverlayHistoryTimer = null;
 
 function getGeorgeTechBackState(extra = {}) {
     const activePage = document.querySelector(".inventory-page.active")?.id || null;
@@ -735,10 +736,35 @@ function recordGeorgeTechHistoryState(state = getCurrentGeorgeTechHistoryState()
         current.georgeTechInventory
         && current.page === state.page
         && String(current.locationId || "") === String(state.locationId || "")
+        && String(current.overlayKey || "") === String(state.overlayKey || "")
     ) return;
     if (replace) history.replaceState(state, "", location.href);
     else history.pushState(state, "", location.href);
     logGeorgeTechBack(replace ? "history-replace" : "history-push", { state });
+}
+
+function getCurrentOverlayKey() {
+    const lightbox = document.getElementById("review-lightbox");
+    if (lightbox && window.getComputedStyle(lightbox).display !== "none") return "lightbox:review";
+    const modal = getTopmostOpenModal();
+    return modal ? `modal:${modal.id}` : null;
+}
+
+function syncGeorgeTechOverlayHistory() {
+    if (georgeTechSuppressHistoryPush || !georgeTechHistoryGuardReady || !window.history?.pushState) return;
+    window.clearTimeout(georgeTechOverlayHistoryTimer);
+    georgeTechOverlayHistoryTimer = window.setTimeout(() => {
+        const overlayKey = getCurrentOverlayKey();
+        const current = window.history.state || {};
+        if (overlayKey) {
+            if (current.georgeTechInventory && current.overlayKey === overlayKey) return;
+            recordGeorgeTechHistoryState({ ...getCurrentGeorgeTechHistoryState(), overlayKey });
+            return;
+        }
+        if (current.georgeTechInventory && current.overlayKey) {
+            recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState(), true);
+        }
+    }, 0);
 }
 
 async function applyGeorgeTechHistoryState(state) {
@@ -798,7 +824,6 @@ function installGeorgeTechBrowserBackGuard() {
 
         try {
             if (isAnyOverlayOpen()) {
-                recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState());
                 if (window.handleGeorgeTechBackButton?.()) {
                     logGeorgeTechBack("popstate-overlay-handled");
                     return;
@@ -826,7 +851,9 @@ async function requestGeorgeTechBrowserExitConfirmation() {
     georgeTechExitConfirmOpen = true;
     try {
         logGeorgeTechBack("exit-confirm-open");
+        georgeTechSuppressHistoryPush = true;
         const shouldLeave = await customConfirm("Do you want to leave GeorgeTech Inventory?", "Leave App?");
+        georgeTechSuppressHistoryPush = false;
         logGeorgeTechBack("exit-confirm-result", { shouldLeave });
         if (shouldLeave) {
             georgeTechAllowBrowserExit = true;
@@ -835,6 +862,7 @@ async function requestGeorgeTechBrowserExitConfirmation() {
             recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState());
         }
     } finally {
+        georgeTechSuppressHistoryPush = false;
         georgeTechExitConfirmOpen = false;
     }
 }
@@ -917,6 +945,21 @@ function isAnyOverlayOpen() {
 
 function updateTopNavVisibilityForOverlays() {
     document.body.classList.toggle("overlay-active", isAnyOverlayOpen());
+    syncGeorgeTechOverlayHistory();
+}
+
+function installGeorgeTechOverlayHistoryObserver() {
+    if (window.__georgeTechOverlayHistoryObserverInstalled) return;
+    window.__georgeTechOverlayHistoryObserverInstalled = true;
+    const observer = new MutationObserver(mutations => {
+        if (mutations.some(mutation => {
+            const target = mutation.target;
+            return target?.classList?.contains("modal") || target?.id === "review-lightbox";
+        })) {
+            syncGeorgeTechOverlayHistory();
+        }
+    });
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["style", "class"] });
 }
 
 function setModalSavingState(modalId, isSaving, label = "Saving") {
@@ -7102,6 +7145,7 @@ function setImportMode(mode, element) {
 
 document.addEventListener('DOMContentLoaded', () => {
   installGeorgeTechBrowserBackGuard();
+  installGeorgeTechOverlayHistoryObserver();
   const dropdown = document.getElementById('searchDropdown');
   const trigger = document.getElementById('dropdownTrigger');
   const menu = document.getElementById('dropdownMenu');
