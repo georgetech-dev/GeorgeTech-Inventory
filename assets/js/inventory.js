@@ -1028,6 +1028,14 @@ function installGeorgeTechCloseWatcherBackHandler() {
         georgeTechCloseWatcher.addEventListener("cancel", event => {
             logGeorgeTechBack("closewatcher-cancel", { cancelable: event.cancelable, canHandle: hasGeorgeTechAppBackAction() });
             if (!event.cancelable) return;
+            if (!hasGeorgeTechAppBackAction()) {
+                const shouldLeave = window.confirm("Do you want to leave GeorgeTech Inventory?");
+                logGeorgeTechBack("closewatcher-root-confirm", { shouldLeave });
+                if (shouldLeave) {
+                    georgeTechAllowBrowserExit = true;
+                    return;
+                }
+            }
             event.preventDefault();
             georgeTechCloseWatcherHandledCancel = true;
             handleGeorgeTechCloseWatcherBackRequest();
@@ -1035,6 +1043,7 @@ function installGeorgeTechCloseWatcherBackHandler() {
         });
         georgeTechCloseWatcher.addEventListener("close", () => {
             logGeorgeTechBack("closewatcher-close");
+            if (georgeTechAllowBrowserExit) return;
             if (!georgeTechCloseWatcherHandledCancel) {
                 handleGeorgeTechCloseWatcherBackRequest();
             }
