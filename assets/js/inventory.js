@@ -690,6 +690,7 @@ let georgeTechBackDebugEnabled = true;
 let georgeTechSuppressHistoryPush = false;
 let georgeTechOverlayHistoryTimer = null;
 let georgeTechCloseWatcher = null;
+let georgeTechCloseWatcherHandledCancel = false;
 
 function getGeorgeTechBackState(extra = {}) {
     const activePage = document.querySelector(".inventory-page.active")?.id || null;
@@ -1002,21 +1003,35 @@ function installGeorgeTechCloseWatcherBackHandler() {
             logGeorgeTechBack("closewatcher-cancel", { cancelable: event.cancelable, canHandle: hasGeorgeTechAppBackAction() });
             if (!event.cancelable) return;
             event.preventDefault();
-            if (hasGeorgeTechAppBackAction()) {
-                window.handleGeorgeTechBackButton?.();
-            } else {
-                requestGeorgeTechBrowserExitConfirmation();
-            }
+            georgeTechCloseWatcherHandledCancel = true;
+            handleGeorgeTechCloseWatcherBackRequest();
             window.setTimeout(refreshGeorgeTechCloseWatcherBackHandler, 0);
         });
         georgeTechCloseWatcher.addEventListener("close", () => {
             logGeorgeTechBack("closewatcher-close");
+            if (!georgeTechCloseWatcherHandledCancel) {
+                handleGeorgeTechCloseWatcherBackRequest();
+            }
+            georgeTechCloseWatcherHandledCancel = false;
             window.setTimeout(refreshGeorgeTechCloseWatcherBackHandler, 0);
         });
         logGeorgeTechBack("closewatcher-installed");
     } catch (error) {
         window.__georgeTechCloseWatcherInstalled = false;
         logGeorgeTechBack("closewatcher-error", { error: String(error?.message || error) });
+    }
+}
+
+function handleGeorgeTechCloseWatcherBackRequest() {
+    georgeTechSuppressHistoryPush = true;
+    try {
+        if (hasGeorgeTechAppBackAction()) {
+            window.handleGeorgeTechBackButton?.();
+        } else {
+            requestGeorgeTechBrowserExitConfirmation();
+        }
+    } finally {
+        window.setTimeout(() => { georgeTechSuppressHistoryPush = false; }, 0);
     }
 }
 
