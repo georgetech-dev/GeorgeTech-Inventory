@@ -689,6 +689,7 @@ let georgeTechExitConfirmOpen = false;
 let georgeTechBackDebugEnabled = true;
 let georgeTechSuppressHistoryPush = false;
 let georgeTechOverlayHistoryTimer = null;
+let georgeTechCloseWatcher = null;
 
 function getGeorgeTechBackState(extra = {}) {
     const activePage = document.querySelector(".inventory-page.active")?.id || null;
@@ -714,11 +715,28 @@ function getGeorgeTechBackState(extra = {}) {
 
 function logGeorgeTechBack(event, extra = {}) {
     if (!georgeTechBackDebugEnabled) return;
-    console.info("[GeorgeTechBack]", event, getGeorgeTechBackState(extra));
+    const state = getGeorgeTechBackState(extra);
+    const entry = { at: new Date().toISOString(), event, state };
+    try {
+        const existing = JSON.parse(localStorage.getItem("georgeTechBackLog") || "[]");
+        existing.push(entry);
+        localStorage.setItem("georgeTechBackLog", JSON.stringify(existing.slice(-80)));
+    } catch (error) {
+        console.warn("Unable to persist back debug log", error);
+    }
+    console.info("[GeorgeTechBack]", event, state);
 }
 
 window.debugBackState = () => getGeorgeTechBackState();
+window.debugBackLog = () => JSON.parse(localStorage.getItem("georgeTechBackLog") || "[]");
+window.clearBackLog = () => localStorage.removeItem("georgeTechBackLog");
 window.setBackDebug = enabled => { georgeTechBackDebugEnabled = enabled !== false; };
+
+function hasGeorgeTechAppBackAction() {
+    return isAnyOverlayOpen()
+        || !!document.querySelector(".tag-search-options.open")
+        || !!(document.getElementById("pageItems")?.classList.contains("active") && currentLocationId);
+}
 
 function getCurrentGeorgeTechHistoryState() {
     const activePage = document.querySelector(".inventory-page.active")?.id || "pageItems";
@@ -960,6 +978,45 @@ function installGeorgeTechOverlayHistoryObserver() {
         }
     });
     observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["style", "class"] });
+}
+
+function installGeorgeTechBackLifecycleDiagnostics() {
+    if (window.__georgeTechBackLifecycleDiagnosticsInstalled) return;
+    window.__georgeTechBackLifecycleDiagnosticsInstalled = true;
+    window.addEventListener("pageshow", event => logGeorgeTechBack("pageshow", { persisted: event.persisted }));
+    window.addEventListener("pagehide", event => logGeorgeTechBack("pagehide", { persisted: event.persisted }));
+    window.addEventListener("beforeunload", () => logGeorgeTechBack("beforeunload"));
+    document.addEventListener("visibilitychange", () => logGeorgeTechBack("visibilitychange", { visibilityState: document.visibilityState }));
+}
+
+function installGeorgeTechCloseWatcherBackHandler() {
+    if (window.__georgeTechCloseWatcherInstalled) return;
+    window.__georgeTechCloseWatcherInstalled = true;
+    if (typeof window.CloseWatcher !== "function") {
+        logGeorgeTechBack("closewatcher-unavailable");
+        return;
+    }
+    try {
+        georgeTechCloseWatcher = new CloseWatcher();
+        georgeTechCloseWatcher.addEventListener("cancel", event => {
+            logGeorgeTechBack("closewatcher-cancel", { cancelable: event.cancelable, canHandle: hasGeorgeTechAppBackAction() });
+            if (!event.cancelable) return;
+            event.preventDefault();
+            if (hasGeorgeTechAppBackAction()) {
+                window.handleGeorgeTechBackButton?.();
+            } else {
+                requestGeorgeTechBrowserExitConfirmation();
+            }
+        });
+        georgeTechCloseWatcher.addEventListener("close", () => {
+            logGeorgeTechBack("closewatcher-close");
+            window.__georgeTechCloseWatcherInstalled = false;
+            window.setTimeout(installGeorgeTechCloseWatcherBackHandler, 0);
+        });
+        logGeorgeTechBack("closewatcher-installed");
+    } catch (error) {
+        logGeorgeTechBack("closewatcher-error", { error: String(error?.message || error) });
+    }
 }
 
 function setModalSavingState(modalId, isSaving, label = "Saving") {
@@ -7146,6 +7203,8 @@ function setImportMode(mode, element) {
 document.addEventListener('DOMContentLoaded', () => {
   installGeorgeTechBrowserBackGuard();
   installGeorgeTechOverlayHistoryObserver();
+  installGeorgeTechBackLifecycleDiagnostics();
+  installGeorgeTechCloseWatcherBackHandler();
   const dropdown = document.getElementById('searchDropdown');
   const trigger = document.getElementById('dropdownTrigger');
   const menu = document.getElementById('dropdownMenu');
