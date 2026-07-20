@@ -686,8 +686,8 @@ function closeTopmostAppModal(modal) {
 let georgeTechHistoryGuardReady = false;
 let georgeTechAllowBrowserExit = false;
 let georgeTechExitConfirmOpen = false;
-let georgeTechBackTrapSequence = 0;
 let georgeTechBackDebugEnabled = true;
+let georgeTechSuppressHistoryPush = false;
 
 function getGeorgeTechBackState(extra = {}) {
     const activePage = document.querySelector(".inventory-page.active")?.id || null;
@@ -704,9 +704,9 @@ function getGeorgeTechBackState(extra = {}) {
         lightboxOpen,
         tagPickerOpen,
         historyLength: window.history?.length || 0,
-        backTrapSequence: georgeTechBackTrapSequence,
         exitConfirmOpen: georgeTechExitConfirmOpen,
         allowBrowserExit: georgeTechAllowBrowserExit,
+        historyState: window.history?.state || null,
         ...extra,
     };
 }
@@ -718,6 +718,57 @@ function logGeorgeTechBack(event, extra = {}) {
 
 window.debugBackState = () => getGeorgeTechBackState();
 window.setBackDebug = enabled => { georgeTechBackDebugEnabled = enabled !== false; };
+
+function getCurrentGeorgeTechHistoryState() {
+    const activePage = document.querySelector(".inventory-page.active")?.id || "pageItems";
+    return {
+        georgeTechInventory: true,
+        page: activePage,
+        locationId: activePage === "pageItems" ? (currentLocationId || null) : null,
+    };
+}
+
+function recordGeorgeTechHistoryState(state = getCurrentGeorgeTechHistoryState(), replace = false) {
+    if (georgeTechSuppressHistoryPush || !window.history?.pushState) return;
+    const current = window.history.state || {};
+    if (
+        current.georgeTechInventory
+        && current.page === state.page
+        && String(current.locationId || "") === String(state.locationId || "")
+    ) return;
+    if (replace) history.replaceState(state, "", location.href);
+    else history.pushState(state, "", location.href);
+    logGeorgeTechBack(replace ? "history-replace" : "history-push", { state });
+}
+
+async function applyGeorgeTechHistoryState(state) {
+    if (!state?.georgeTechInventory) return false;
+    georgeTechSuppressHistoryPush = true;
+    try {
+        logGeorgeTechBack("history-apply", { state });
+        if (state.page && !document.getElementById(state.page)?.classList.contains("active")) {
+            document.querySelectorAll(".inventory-page").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".tab-link").forEach(b => b.classList.remove("active"));
+            document.getElementById(state.page)?.classList.add("active");
+            const tabMap = { pageItems: "tab-items", pageLocations: "tab-locations", pageTempLocations: "tab-temp-locations", pageTags: "tab-tags", pageCategories: "tab-categories", pageSettings: "tab-settings" };
+            document.getElementById(tabMap[state.page])?.classList.add("active");
+        }
+        if (state.page === "pageItems") {
+            if (state.locationId === "unallocated") await loadUnallocatedItems();
+            else if (state.locationId) await loadLocation(state.locationId);
+            else await loadRootLocations();
+            return true;
+        }
+        if (state.page === "pageLocations") loadLocationsAdmin();
+        if (state.page === "pageTempLocations") loadTempLocationsAdmin();
+        if (state.page === "pageTags") loadTagsAdmin();
+        if (state.page === "pageCategories") loadCategoriesAdmin();
+        if (state.page === "pageSettings") loadAuditLogs();
+        return true;
+    } finally {
+        georgeTechSuppressHistoryPush = false;
+    }
+}
 
 function showBackExitHint() {
     let hint = document.getElementById("georgeTechBackExitHint");
@@ -737,27 +788,26 @@ function installGeorgeTechBrowserBackGuard() {
     if (georgeTechHistoryGuardReady || !window.history?.pushState) return;
     georgeTechHistoryGuardReady = true;
 
-    const pushBackTrap = () => {
-        history.pushState({ georgeTechBackTrap: ++georgeTechBackTrapSequence }, "", location.href);
-    };
-    const replenishBackTraps = () => {
-        for (let i = 0; i < 8; i += 1) pushBackTrap();
-    };
-
-    history.replaceState({ georgeTechAppRoot: true }, "", location.href);
-    replenishBackTraps();
+    recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState(), true);
     logGeorgeTechBack("guard-installed");
 
-    window.addEventListener("popstate", () => {
+    window.addEventListener("popstate", async event => {
         if (georgeTechAllowBrowserExit) return;
 
-        replenishBackTraps();
-        window.setTimeout(replenishBackTraps, 0);
-        logGeorgeTechBack("popstate-captured");
+        logGeorgeTechBack("popstate-captured", { eventState: event.state });
 
         try {
-            if (window.handleGeorgeTechBackButton?.()) {
-                logGeorgeTechBack("popstate-handled");
+            if (isAnyOverlayOpen()) {
+                recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState());
+                if (window.handleGeorgeTechBackButton?.()) {
+                    logGeorgeTechBack("popstate-overlay-handled");
+                    return;
+                }
+            }
+
+            if (event.state?.georgeTechInventory) {
+                await applyGeorgeTechHistoryState(event.state);
+                logGeorgeTechBack("popstate-state-applied");
                 return;
             }
         } catch (error) {
@@ -780,7 +830,9 @@ async function requestGeorgeTechBrowserExitConfirmation() {
         logGeorgeTechBack("exit-confirm-result", { shouldLeave });
         if (shouldLeave) {
             georgeTechAllowBrowserExit = true;
-            history.go(-2);
+            history.back();
+        } else {
+            recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState());
         }
     } finally {
         georgeTechExitConfirmOpen = false;
@@ -1760,6 +1812,7 @@ async function loadRootLocations() {
     currentBrowserLocations = [...rootLocs, { id: "unallocated", name: "Unallocated Items" }];
     currentBrowserItems = [];
     renderLocations(currentBrowserLocations); renderItems(currentBrowserItems);
+    recordGeorgeTechHistoryState({ georgeTechInventory: true, page: "pageItems", locationId: null });
 }
 
 async function loadLocation(id) {
@@ -1768,6 +1821,7 @@ async function loadLocation(id) {
     currentBrowserLocations = await localDB.locations.where('parent_id').equals(id).toArray();
     currentBrowserItems = await localDB.items.where('location_id').equals(id).toArray();
     renderLocations(currentBrowserLocations); renderItems(currentBrowserItems);
+    recordGeorgeTechHistoryState({ georgeTechInventory: true, page: "pageItems", locationId: id || null });
 }
 
 function navigateToLocation(id) {
@@ -1796,6 +1850,7 @@ async function loadUnallocatedItems() {
     currentBrowserLocations = [];
     const allItems = await localDB.items.toArray(); currentBrowserItems = allItems.filter(i => !i.location_id);
     renderLocations([]); renderItems(currentBrowserItems);
+    recordGeorgeTechHistoryState({ georgeTechInventory: true, page: "pageItems", locationId: "unallocated" });
 }
 
 async function loadAllItemsFlat() {
