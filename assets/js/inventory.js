@@ -1116,9 +1116,19 @@ async function exportFullSystemZip() {
             async function fetchAndZipImage(bucket, fileName) {
                 if (!fileName) return null;
                 try {
-                    const { data, error } = await window.db.storage.from(bucket).download(fileName);
-                    if (data) {
-                        imgFolder.file(fileName, data);
+                    const cachedDataUrl = await window.getCachedImageDataUrl?.(bucket, fileName);
+                    let imageBlob = cachedDataUrl ? window.base64ToBlob(cachedDataUrl) : null;
+                    if (!imageBlob) {
+                        const { data, error } = await window.db.storage.from(bucket).download(fileName);
+                        if (error) throw error;
+                        imageBlob = data || null;
+                        if (imageBlob) {
+                            const dataUrl = await window.blobToDataUrl(imageBlob);
+                            await window.cacheImageDataUrl?.(bucket, fileName, dataUrl);
+                        }
+                    }
+                    if (imageBlob) {
+                        imgFolder.file(fileName, imageBlob);
                         return `./images/${fileName}`; 
                     }
                 } catch (e) { console.warn("Failed to download image:", fileName); }
@@ -2122,9 +2132,7 @@ function renderLocations(locations) {
         let imgSrc = "../assets/images/folder-icon.jpg";
         const photoKey = loc.photo_path || loc.photo;
         
-        if (photoKey && photoKey !== "null" && photoKey !== "undefined") {
-            imgSrc = window.db.storage.from("location-photos").getPublicUrl(photoKey).data.publicUrl;
-        }
+        if (photoKey && photoKey !== "null" && photoKey !== "undefined") imgSrc = "../assets/images/folder-icon.jpg";
         
         tile.innerHTML = `
             <div class="item-card-photo-wrapper">
@@ -2136,6 +2144,9 @@ function renderLocations(locations) {
         
         tile.onclick = () => navigateToLocation(loc.id); 
         container.appendChild(tile);
+        if (photoKey && photoKey !== "null" && photoKey !== "undefined") {
+            window.hydrateCachedImage?.(tile.querySelector("img"), "location-photos", photoKey, "../assets/images/folder-icon.jpg");
+        }
     });
 }
 
@@ -2152,7 +2163,8 @@ function renderItems(items) {
     if (sortedItems.length > 0) {
         sortedItems.forEach(item => {
             const card = document.createElement("div"); card.className = "item-card"; if (item.id === lastMovedItemId) card.classList.add("moved-item-highlight");
-            let imgUrl = "../assets/images/no-image.jpg"; if (item.photos?.length) { const defP = item.photos.find(p => p.is_primary) || item.photos[0]; imgUrl = window.db.storage.from("item-photos").getPublicUrl(defP.file_path).data.publicUrl; }
+            let imgUrl = "../assets/images/no-image.jpg";
+            const defP = item.photos?.length ? (item.photos.find(p => p.is_primary) || item.photos[0]) : null;
             let locPath = item.location_id ? buildLocationPath(item.location_id) : "Unallocated";
             
             let overlayHtml = ""; let quickReturnHtml = "";
@@ -2176,6 +2188,7 @@ function renderItems(items) {
             }
 
             card.innerHTML = `<div class="item-card-photo-wrapper" style="${(!isEquipmentAsset && isOutOfStock) ? 'filter: grayscale(60%) opacity(0.7);' : ''}">${overlayHtml}<img src="${imgUrl}"></div>${qtyBadgeHtml}${quickReturnHtml}<div class="item-card-name" style="${(!isEquipmentAsset && isOutOfStock) ? 'color:#94a3b8;' : ''}">${item.name}</div><div style="font-size: 11px; color: #666; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; z-index: 6;"><span>📍</span> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">${locPath}</span></div>`;
+            if (defP?.file_path) window.hydrateCachedImage?.(card.querySelector(".item-card-photo-wrapper img"), "item-photos", defP.file_path, "../assets/images/no-image.jpg");
             card.onclick = () => openItemDetails(item); container.appendChild(card);
         });
     }
@@ -2324,7 +2337,7 @@ function renderMultipleFilesPreviews(containerId, filesArray, mode, existingPhot
     const container = document.getElementById(containerId); if (!container) return; container.innerHTML = "";
     existingPhotos.forEach((photo) => {
         const wrapper = document.createElement("div"); wrapper.style.cssText = "position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #ddd;";
-        const img = document.createElement("img"); img.style.cssText = "width: 100%; height: 100%; object-fit: cover;"; img.src = window.db.storage.from("item-photos").getPublicUrl(photo.file_path).data.publicUrl;
+        const img = document.createElement("img"); img.style.cssText = "width: 100%; height: 100%; object-fit: cover;"; img.src = "../assets/images/no-image.jpg"; window.hydrateCachedImage?.(img, "item-photos", photo.file_path, "../assets/images/no-image.jpg");
         const removeBtn = document.createElement("div"); removeBtn.style.cssText = "position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.9); color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; font-weight: bold; line-height: 1;"; removeBtn.innerHTML = "&times;";
         removeBtn.onclick = () => { existingItemPhotosToDelete.push(photo.file_path); const index = currentItemForActions.photos.findIndex(p => p.file_path === photo.file_path); if (index > -1) currentItemForActions.photos.splice(index, 1); if (primaryPhotoIdentifier === photo.file_path) primaryPhotoIdentifier = null; renderMultipleFilesPreviews(containerId, filesArray, mode, currentItemForActions.photos); };
         const starBtn = document.createElement("div"); const isPrimary = primaryPhotoIdentifier === photo.file_path || photo.is_primary; if (isPrimary && !primaryPhotoIdentifier) primaryPhotoIdentifier = photo.file_path;
@@ -3648,8 +3661,10 @@ async function addLocation(addAnother = false) {
     if (response.success) {
         // Handle Offline Photos
         if (currentAddLocationFiles.length > 0) {
-            const file = currentAddLocationFiles[0]; 
+            let file = currentAddLocationFiles[0]; 
             const fileName = `location-${Date.now()}`;
+            const cached = await window.cacheImageFile?.("location-photos", fileName, file);
+            if (cached?.file) file = cached.file;
             const base64Data = await window.fileToBase64(file);
             
             await localDB.sync_photos_queue.add({
@@ -3683,7 +3698,7 @@ function openLocationActions(id) {
     setElementValue("editLocationNFC", loc.nfc || loc.nfc_tag || "");
     setElementValue("editLocationCategory", loc.category || "storage");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
-    const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) window.hydrateCachedImage?.(previewImg, "location-photos", loc.photo, "../assets/images/folder-icon.jpg"); else previewImg.src = "../assets/images/folder-icon.jpg";
     document.querySelector("#locationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("locationActionsModal").style.display = "flex";
     markModalClean("locationActionsModal");
@@ -3700,7 +3715,10 @@ async function saveLocationEdits() {
 
     let photoPath = locationsAdmin.find(l => l.id === editingLocationId)?.photo || null;
     if (currentEditLocationFile) {
-        const fileName = `location-${Date.now()}`; const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, currentEditLocationFile);
+        const fileName = `location-${Date.now()}`;
+        const cached = await window.cacheImageFile?.("location-photos", fileName, currentEditLocationFile);
+        const uploadFile = cached?.file || currentEditLocationFile;
+        const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, uploadFile, { upsert: true, contentType: uploadFile.type || "image/jpeg" });
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
@@ -3751,7 +3769,7 @@ function openTempLocationActions(id) {
     setElementValue("editTempLocationBarcode", loc.barcode || "");
     setElementValue("editTempLocationNFC", loc.nfc_tag || "");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
-    const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) window.hydrateCachedImage?.(previewImg, "location-photos", loc.photo_path, "../assets/images/folder-icon.jpg"); else previewImg.src = "../assets/images/folder-icon.jpg";
     document.querySelector("#tempLocationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("tempLocationActionsModal").style.display = "flex";
     markModalClean("tempLocationActionsModal");
@@ -3766,7 +3784,10 @@ async function saveTempLocationEdits() {
 
     let photoPath = tempLocationsAdmin.find(l => l.id === editingTempLocationId)?.photo_path || null;
     if (currentEditLocationFile) {
-        const fileName = `temp-loc-${Date.now()}`; const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, currentEditLocationFile);
+        const fileName = `temp-loc-${Date.now()}`;
+        const cached = await window.cacheImageFile?.("location-photos", fileName, currentEditLocationFile);
+        const uploadFile = cached?.file || currentEditLocationFile;
+        const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, uploadFile, { upsert: true, contentType: uploadFile.type || "image/jpeg" });
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
@@ -4079,8 +4100,10 @@ async function addLocation(addAnother = false) {
 
     if (response.success) {
         if (currentAddLocationFiles.length > 0) {
-            const file = currentAddLocationFiles[0]; 
+            let file = currentAddLocationFiles[0]; 
             const fileName = `location-${Date.now()}`;
+            const cached = await window.cacheImageFile?.("location-photos", fileName, file);
+            if (cached?.file) file = cached.file;
             const base64Data = await window.fileToBase64(file);
             
             await localDB.sync_photos_queue.add({
@@ -4113,7 +4136,7 @@ function openLocationActions(id) {
     setElementValue("editLocationNFC", loc.nfc || loc.nfc_tag || "");
     setElementValue("editLocationCategory", loc.category || "storage");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
-    const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) window.hydrateCachedImage?.(previewImg, "location-photos", loc.photo, "../assets/images/folder-icon.jpg"); else previewImg.src = "../assets/images/folder-icon.jpg";
     document.querySelector("#locationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("locationActionsModal").style.display = "flex";
     markModalClean("locationActionsModal");
@@ -4130,7 +4153,10 @@ async function saveLocationEdits() {
 
     let photoPath = locationsAdmin.find(l => l.id === editingLocationId)?.photo || null;
     if (currentEditLocationFile) {
-        const fileName = `location-${Date.now()}`; const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, currentEditLocationFile);
+        const fileName = `location-${Date.now()}`;
+        const cached = await window.cacheImageFile?.("location-photos", fileName, currentEditLocationFile);
+        const uploadFile = cached?.file || currentEditLocationFile;
+        const { error: uploadError } = await window.db.storage.from("location-photos").upload(fileName, uploadFile, { upsert: true, contentType: uploadFile.type || "image/jpeg" });
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
@@ -5830,9 +5856,11 @@ async function uploadItemPhotoFiles(itemId, filesArray, primaryIdentifier, exist
     if (!itemId || !filesArray || filesArray.length === 0) return insertedPhotos;
 
     for (let i = 0; i < filesArray.length; i++) {
-        const file = filesArray[i];
+        let file = filesArray[i];
         const fileName = `item-${itemId}-${Date.now()}-${i}`;
         const isPrimary = file.name === primaryIdentifier || (!primaryIdentifier && i === 0 && existingPhotoCount === 0);
+        const cached = await window.cacheImageFile?.("item-photos", fileName, file);
+        if (cached?.file) file = cached.file;
         const { error: uploadError } = await window.db.storage
             .from("item-photos")
             .upload(fileName, file, { upsert: true, contentType: file.type || "image/jpeg" });
@@ -5850,9 +5878,11 @@ async function uploadItemPhotoFiles(itemId, filesArray, primaryIdentifier, exist
 async function queueItemPhotoFiles(itemId, filesArray, primaryIdentifier) {
     if (!itemId || !filesArray || filesArray.length === 0) return;
     for (let i = 0; i < filesArray.length; i++) {
-        const file = filesArray[i];
+        let file = filesArray[i];
         const fileName = `item-${itemId}-${Date.now()}-${i}`;
         const isPrimary = file.name === primaryIdentifier || (!primaryIdentifier && i === 0);
+        const cached = await window.cacheImageFile?.("item-photos", fileName, file);
+        if (cached?.file) file = cached.file;
         const base64Data = await window.fileToBase64(file);
         await localDB.sync_photos_queue.add({
             record_id: itemId,
@@ -6420,18 +6450,20 @@ function openItemDetails(item) {
     if (item.photos && item.photos.length > 0) {
         expandBtn.style.display = "block";
         const sortedPhotos = [...item.photos].sort((a,b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
-        imgEl.src = window.db.storage.from("item-photos").getPublicUrl(sortedPhotos[0].file_path).data.publicUrl;
+        imgEl.src = "../assets/images/no-image.jpg";
+        window.hydrateCachedImage?.(imgEl, "item-photos", sortedPhotos[0].file_path, "../assets/images/no-image.jpg");
         
         sortedPhotos.forEach((photo, idx) => {
-            const publicUrl = window.db.storage.from("item-photos").getPublicUrl(photo.file_path).data.publicUrl;
-            lightboxImages.push(publicUrl);
+            lightboxImages.push("../assets/images/no-image.jpg");
             const thumbImg = document.createElement("img"); 
             thumbImg.className = `view-thumb-item ${idx === 0 ? 'active' : ''}`; 
-            thumbImg.src = publicUrl;
+            thumbImg.src = "../assets/images/no-image.jpg";
+            window.hydrateCachedImage?.(thumbImg, "item-photos", photo.file_path, "../assets/images/no-image.jpg");
+            window.cacheStorageImage?.("item-photos", photo.file_path).then(dataUrl => { if (dataUrl) lightboxImages[idx] = dataUrl; }).catch(() => {});
             thumbImg.onclick = () => { 
                 document.querySelectorAll(".view-thumb-item").forEach(t => t.classList.remove("active")); 
                 thumbImg.classList.add("active"); 
-                imgEl.src = publicUrl; 
+                imgEl.src = thumbImg.src; 
                 lightboxIndex = idx; 
             };
             thumbsContainer.appendChild(thumbImg);

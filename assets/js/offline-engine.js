@@ -19,6 +19,20 @@ localDB.version(3).stores({
     audit_logs: 'id, created_at, action_type'
 });
 
+// Version 4: Persistent local image cache for offline-first photos
+localDB.version(4).stores({
+    items: 'id, name, location_id, assigned_to, category, barcode, nfc_tag',
+    locations: 'id, parent_id, barcode, nfc_tag',
+    temp_locations: 'id, barcode, nfc_tag',
+    tags: 'id, name',
+    item_categories: 'id, name',
+    jobs: 'id, status, engineer_id, scheduled_date',
+    sync_queue: '++id, action, table, payload, created_at, status',
+    sync_photos_queue: '++id, record_id, record_type, bucket, file_name, base64_data, is_primary, status',
+    audit_logs: 'id, created_at, action_type',
+    image_cache: 'key, bucket, file_name, updated_at'
+});
+
 // Global state tracker
 window.isAppOnline = navigator.onLine;
 
@@ -256,6 +270,7 @@ window.processSyncQueue = async function() {
                     // Convert text back into an image file
                     const blob = window.base64ToBlob(photo.base64_data);
                     const file = new File([blob], photo.file_name, { type: blob.type });
+                    await window.cacheImageDataUrl(photo.bucket, photo.file_name, photo.base64_data);
 
                     // Upload to Supabase Storage
                     const { error: uploadErr } = await window.db.storage.from(photo.bucket).upload(photo.file_name, file, { upsert: true, contentType: file.type || "image/jpeg" });
@@ -298,6 +313,93 @@ window.base64ToBlob = function(base64Data) {
     let n = bstr.length; const u8arr = new Uint8Array(n);
     while(n--){ u8arr[n] = bstr.charCodeAt(n); }
     return new Blob([u8arr], {type: mime});
+};
+
+window.getImageCacheKey = function(bucket, fileName) {
+    return `${bucket || ""}/${fileName || ""}`;
+};
+
+window.blobToDataUrl = function(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
+window.compressImageFile = async function(file, options = {}) {
+    const maxSize = options.maxSize || 1600;
+    const quality = options.quality || 0.78;
+    if (!file || !String(file.type || "").startsWith("image/")) return file;
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (!blob) return file;
+    return new File([blob], `${(file.name || "photo").replace(/\.[^.]+$/, "")}.jpg`, { type: "image/jpeg" });
+};
+
+window.cacheImageDataUrl = async function(bucket, fileName, dataUrl) {
+    if (!bucket || !fileName || !dataUrl || !localDB.image_cache) return null;
+    const key = window.getImageCacheKey(bucket, fileName);
+    await localDB.image_cache.put({
+        key,
+        bucket,
+        file_name: fileName,
+        data_url: dataUrl,
+        updated_at: new Date().toISOString()
+    });
+    return dataUrl;
+};
+
+window.cacheImageFile = async function(bucket, fileName, file) {
+    if (!bucket || !fileName || !file) return null;
+    const compressed = await window.compressImageFile(file);
+    const dataUrl = await window.fileToBase64(compressed);
+    await window.cacheImageDataUrl(bucket, fileName, dataUrl);
+    return { file: compressed, dataUrl };
+};
+
+window.getCachedImageDataUrl = async function(bucket, fileName) {
+    if (!bucket || !fileName || !localDB.image_cache) return null;
+    const row = await localDB.image_cache.get(window.getImageCacheKey(bucket, fileName));
+    return row?.data_url || null;
+};
+
+window.cacheStorageImage = async function(bucket, fileName) {
+    if (!bucket || !fileName || !window.isAppOnline) return null;
+    const cached = await window.getCachedImageDataUrl(bucket, fileName);
+    if (cached) return cached;
+    const { data, error } = await window.db.storage.from(bucket).download(fileName);
+    if (error || !data) return null;
+    const dataUrl = await window.blobToDataUrl(data);
+    await window.cacheImageDataUrl(bucket, fileName, dataUrl);
+    return dataUrl;
+};
+
+window.hydrateCachedImage = async function(imgEl, bucket, fileName, fallbackSrc) {
+    if (!imgEl || !bucket || !fileName) return;
+    const cached = await window.getCachedImageDataUrl(bucket, fileName);
+    if (cached) {
+        imgEl.src = cached;
+        return;
+    }
+    if (!window.isAppOnline) {
+        if (fallbackSrc) imgEl.src = fallbackSrc;
+        return;
+    }
+    const publicUrl = window.db.storage.from(bucket).getPublicUrl(fileName).data.publicUrl;
+    imgEl.src = publicUrl;
+    window.cacheStorageImage(bucket, fileName).then(dataUrl => {
+        if (dataUrl && imgEl.isConnected) imgEl.src = dataUrl;
+    }).catch(error => console.warn("Image cache download failed:", bucket, fileName, error));
 };
 
 let deferredPrompt;
