@@ -875,8 +875,7 @@ async function requestGeorgeTechBrowserExitConfirmation() {
         georgeTechSuppressHistoryPush = false;
         logGeorgeTechBack("exit-confirm-result", { shouldLeave });
         if (shouldLeave) {
-            georgeTechAllowBrowserExit = true;
-            history.back();
+            performGeorgeTechConfirmedExit();
         } else {
             recordGeorgeTechHistoryState(getCurrentGeorgeTechHistoryState());
         }
@@ -884,6 +883,48 @@ async function requestGeorgeTechBrowserExitConfirmation() {
         georgeTechSuppressHistoryPush = false;
         georgeTechExitConfirmOpen = false;
     }
+}
+
+function performGeorgeTechConfirmedExit() {
+    georgeTechAllowBrowserExit = true;
+    logGeorgeTechBack("exit-confirmed");
+    try {
+        georgeTechCloseWatcher?.destroy?.();
+    } catch (error) {
+        logGeorgeTechBack("exit-destroy-watcher-error", { error: String(error?.message || error) });
+    }
+    georgeTechCloseWatcher = null;
+    window.__georgeTechCloseWatcherInstalled = true;
+
+    try {
+        window.close();
+    } catch (error) {
+        logGeorgeTechBack("exit-window-close-error", { error: String(error?.message || error) });
+    }
+
+    window.setTimeout(() => {
+        if (document.visibilityState === "hidden") return;
+        try {
+            history.back();
+        } catch (error) {
+            logGeorgeTechBack("exit-history-back-error", { error: String(error?.message || error) });
+        }
+    }, 80);
+
+    window.setTimeout(() => {
+        if (document.visibilityState === "hidden") return;
+        document.body.classList.add("app-exit-screen");
+        document.body.innerHTML = `
+            <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f8fafc;color:#0f172a;">
+                <section style="max-width:360px;">
+                    <img src="assets/images/logo.png" alt="GeorgeTech" style="width:96px;height:96px;object-fit:contain;margin-bottom:16px;">
+                    <h1 style="font-size:26px;margin:0 0 10px;">GeorgeTech Inventory closed</h1>
+                    <p style="font-size:16px;line-height:1.45;margin:0 0 18px;color:#475569;">Chrome would not close the installed app automatically. Use the Android home button or app switcher to leave.</p>
+                    <button onclick="location.replace('index.html')" style="border:0;border-radius:10px;background:#004a99;color:white;font-weight:800;font-size:16px;padding:12px 18px;">Reopen Inventory</button>
+                </section>
+            </main>
+        `;
+    }, 450);
 }
 
 async function navigateBackInItemLocations() {
