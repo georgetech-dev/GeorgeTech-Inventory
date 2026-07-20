@@ -683,10 +683,10 @@ function closeTopmostAppModal(modal) {
     return true;
 }
 
-let georgeTechBackExitArmedAt = 0;
 let georgeTechHistoryGuardReady = false;
 let georgeTechAllowBrowserExit = false;
 let georgeTechExitConfirmOpen = false;
+let georgeTechBackTrapSequence = 0;
 
 function showBackExitHint() {
     let hint = document.getElementById("georgeTechBackExitHint");
@@ -705,24 +705,30 @@ function showBackExitHint() {
 function installGeorgeTechBrowserBackGuard() {
     if (georgeTechHistoryGuardReady || !window.history?.pushState) return;
     georgeTechHistoryGuardReady = true;
-    history.replaceState({ georgeTechApp: true }, "", location.href);
-    history.pushState({ georgeTechAppGuard: 1 }, "", location.href);
-    history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
+
+    const pushBackTrap = () => {
+        history.pushState({ georgeTechBackTrap: ++georgeTechBackTrapSequence }, "", location.href);
+    };
+
+    history.replaceState({ georgeTechAppRoot: true }, "", location.href);
+    pushBackTrap();
+    pushBackTrap();
+
     window.addEventListener("popstate", () => {
         if (georgeTechAllowBrowserExit) return;
+
+        pushBackTrap();
+        window.setTimeout(pushBackTrap, 0);
+
         try {
             if (window.handleGeorgeTechBackButton?.()) {
-                georgeTechBackExitArmedAt = 0;
-                history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
                 return;
             }
         } catch (error) {
             console.error("Browser back handler failed:", error);
-            history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
             return;
         }
 
-        history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
         requestGeorgeTechBrowserExitConfirmation();
     });
 }
@@ -735,8 +741,6 @@ async function requestGeorgeTechBrowserExitConfirmation() {
         if (shouldLeave) {
             georgeTechAllowBrowserExit = true;
             history.go(-2);
-        } else {
-            georgeTechBackExitArmedAt = 0;
         }
     } finally {
         georgeTechExitConfirmOpen = false;
