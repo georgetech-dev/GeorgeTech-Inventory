@@ -1803,8 +1803,9 @@ function renderTempLocationTilesAdmin() {
     container.style.display = "grid";
     tempLocationsAdmin.forEach(loc => {
         const div = document.createElement("div"); div.className = "item-card temp-location-card";
-        let imgSrc = "../assets/images/folder-icon.jpg"; if (loc.photo_path) imgSrc = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl;
+        let imgSrc = "../assets/images/folder-icon.jpg";
         div.innerHTML = `<div class="cog" onclick="openTempLocationActions('${loc.id}');event.stopPropagation();">⚙️</div><div class="item-card-photo-wrapper" style="border-radius:50%;"><img src="${imgSrc}"></div><div class="item-card-name" style="color:#10b981;">${loc.name}</div>`;
+        if (loc.photo_path) window.hydrateCachedImage?.(div.querySelector("img"), "location-photos", loc.photo_path, "../assets/images/folder-icon.jpg");
         div.onclick = () => loadTempLocationDetails(loc.id); container.appendChild(div);
     });
 }
@@ -1824,10 +1825,7 @@ function renderAssignedItems(items) {
         if (item.id === lastMovedItemId) card.classList.add("moved-item-highlight");
 
         let imgUrl = "../assets/images/no-image.jpg";
-        if (item.photos?.length) {
-            const defaultPhoto = item.photos.find(p => p.is_primary) || item.photos[0];
-            imgUrl = window.db.storage.from("item-photos").getPublicUrl(defaultPhoto.file_path).data.publicUrl;
-        }
+        const defaultPhoto = item.photos?.length ? (item.photos.find(p => p.is_primary) || item.photos[0]) : null;
 
         const locPath = item.location_id ? buildLocationPath(item.location_id) : "Unallocated";
         const isEquipment = String(item.quantity).trim() === "-";
@@ -1850,6 +1848,7 @@ function renderAssignedItems(items) {
             : `<div onclick="executeReturnItem('${item.id}', true); event.stopPropagation();" style="position:absolute; top:8px; right:8px; background:#ef4444; color:white; padding:6px 10px; border-radius:6px; font-size:11px; font-weight:bold; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.2); cursor:pointer;">Return Item</div>`;
 
         card.innerHTML = `<div class="item-card-photo-wrapper"><img src="${imgUrl}"></div><div class="item-card-qty-badge">${qtyBadge}</div>${actionHtml}<div class="item-card-name" style="margin-top: 10px;">${item.name}</div><div style="font-size: 11px; color: #666; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;"><span>Location:</span> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">${locPath}</span></div>`;
+        if (defaultPhoto?.file_path) window.hydrateCachedImage?.(card.querySelector("img"), "item-photos", defaultPhoto.file_path, "../assets/images/no-image.jpg");
         card.onclick = () => openItemDetails(item);
         container.appendChild(card);
     });
@@ -2241,15 +2240,23 @@ function renderItems(items) {
             if (row.isLocation) {
                 tr.onclick = () => navigateToLocation(row.id);
                 const targetLocObj = locationsAdmin.find(l => l.id === row.id);
-                if (targetLocObj && targetLocObj.photo) rowImgSrc = window.db.storage.from("location-photos").getPublicUrl(targetLocObj.photo).data.publicUrl; else rowImgSrc = "../assets/images/folder-icon.jpg";
+                if (targetLocObj && targetLocObj.photo) rowImgSrc = "../assets/images/folder-icon.jpg"; else rowImgSrc = "../assets/images/folder-icon.jpg";
                 tr.innerHTML = `<td><img src="${rowImgSrc}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 6px;" onerror="this.onerror=null;this.src='../assets/images/folder-icon.jpg';"></td><td style="font-weight:700; color: #ff8c00; display: ${c.name ? '' : 'none'};">📦 ${row.name}</td><td style="color: #999; font-style: italic; display: ${c.quantity ? '' : 'none'};">—</td><td style="display: ${c.barcode ? '' : 'none'};">${row.barcode || '—'}</td><td style="display: ${c.nfc ? '' : 'none'};">${row.nfc_tag || '—'}</td><td style="text-transform: capitalize; display: ${c.category ? '' : 'none'};">${row.category || '—'}</td><td style="color: #999; display: ${c.tags ? '' : 'none'};">—</td>`;
             } else {
                 tr.onclick = () => openItemDetails(row.rawItem);
-                if (row.rawItem && row.rawItem.photos && row.rawItem.photos.length > 0) { const defaultPhoto = row.rawItem.photos.find(p => p.is_primary) || row.rawItem.photos[0]; rowImgSrc = window.db.storage.from("item-photos").getPublicUrl(defaultPhoto.file_path).data.publicUrl; }
+                if (row.rawItem && row.rawItem.photos && row.rawItem.photos.length > 0) rowImgSrc = "../assets/images/no-image.jpg";
                 let nameHtml = row.name; if (row.rawItem.assigned_to) { const tempLoc = tempLocationsAdmin.find(t => t.id === row.rawItem.assigned_to); nameHtml = `<span style="color:#10b981;">👤 [Out: ${tempLoc ? tempLoc.name : 'User'}]</span> ${row.name}`; } else nameHtml = `🔹 ${row.name}`;
                 tr.innerHTML = `<td><img src="${rowImgSrc}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 6px;" onerror="this.onerror=null;this.src='../assets/images/no-image.jpg';"></td><td style="font-weight:600; display: ${c.name ? '' : 'none'};">${nameHtml}</td><td style="display: ${c.quantity ? '' : 'none'};">${row.quantity}</td><td style="display: ${c.barcode ? '' : 'none'};">${row.barcode || '—'}</td><td style="display: ${c.nfc ? '' : 'none'};">${row.nfc_tag || '—'}</td><td style="display: ${c.category ? '' : 'none'};">${row.category || '—'}</td><td style="display: ${c.tags ? '' : 'none'};">${row.tags}</td>`;
             }
             tbody.appendChild(tr);
+            const rowThumb = tr.querySelector("img");
+            if (row.isLocation) {
+                const targetLocObj = locationsAdmin.find(l => l.id === row.id);
+                if (targetLocObj?.photo) window.hydrateCachedImage?.(rowThumb, "location-photos", targetLocObj.photo, "../assets/images/folder-icon.jpg");
+            } else {
+                const rowDefaultPhoto = row.rawItem?.photos?.length ? (row.rawItem.photos.find(p => p.is_primary) || row.rawItem.photos[0]) : null;
+                if (rowDefaultPhoto?.file_path) window.hydrateCachedImage?.(rowThumb, "item-photos", rowDefaultPhoto.file_path, "../assets/images/no-image.jpg");
+            }
         });
         initResizableColumns(document.getElementById("itemsTable"));
     }
@@ -2262,18 +2269,26 @@ function renderLocationTilesAdmin(list) {
         tileContainer.style.display = "none"; tableContainer.style.display = "block";
         let html = `<table class="custom-table" style="width: 100%;"><thead><tr><th>Folder</th><th>Path / Name</th><th>Barcode ID</th><th>Hardware ID (NFC)</th><th style="text-align: right; padding-right: 25px;">Actions</th></tr></thead><tbody>`;
         list.forEach(loc => {
-            let imgSrc = "../assets/images/folder-icon.jpg"; if (loc.photo) imgSrc = window.db.storage.from("location-photos").getPublicUrl(loc.photo).data.publicUrl; else if (loc.photo_path) imgSrc = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl;
+            let imgSrc = "../assets/images/folder-icon.jpg";
             html += `<tr onclick="openLocationActions('${loc.id}')" style="cursor: pointer;"><td style="width: 65px;"><img src="${imgSrc}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;" onerror="this.src='../assets/images/folder-icon.jpg'"></td><td style="font-weight: 600; color: #004a99;">${adminLocationView === "flat" ? (loc.fullPath || loc.name) : (loc.name || "Unnamed Location")}</td><td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${loc.barcode || "—"}</code></td><td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${loc.nfc_tag || loc.nfc || "—"}</code></td><td style="text-align: right; padding-right: 15px;" onclick="event.stopPropagation();"><button class="btn-primary" onclick="openLocationActions('${loc.id}')" style="padding: 6px 12px; font-size: 12px; background:#004a99;">⚙️ Manage</button></td></tr>`;
         });
-        html += `</tbody></table>`; tableContainer.innerHTML = html; return;
+        html += `</tbody></table>`; tableContainer.innerHTML = html;
+        tableContainer.querySelectorAll("tbody tr").forEach((rowEl, index) => {
+            const loc = list[index];
+            const photoKey = loc?.photo || loc?.photo_path;
+            if (photoKey) window.hydrateCachedImage?.(rowEl.querySelector("img"), "location-photos", photoKey, "../assets/images/folder-icon.jpg");
+        });
+        return;
     }
     tableContainer.style.display = "none"; tileContainer.style.display = "grid"; tileContainer.innerHTML = "";
     let sortedList = [...list];
     if (typeof currentSortModeLocations !== 'undefined' && currentSortModeLocations === 'name_desc') { sortedList.sort((a, b) => { const nameA = adminLocationView === "flat" ? a.fullPath : a.name; const nameB = adminLocationView === "flat" ? b.fullPath : b.name; return nameB.localeCompare(nameA); }); } else { sortedList.sort((a, b) => { const nameA = adminLocationView === "flat" ? a.fullPath : a.name; const nameB = adminLocationView === "flat" ? b.fullPath : b.name; return nameA.localeCompare(nameB); }); }
     sortedList.forEach(loc => {
         const div = document.createElement("div"); div.className = "item-card location-card";
-        let imgSrc = "../assets/images/folder-icon.jpg"; if (loc.photo) imgSrc = window.db.storage.from("location-photos").getPublicUrl(loc.photo).data.publicUrl; else if (loc.photo_path) imgSrc = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl;
+        let imgSrc = "../assets/images/folder-icon.jpg";
         div.innerHTML = `<div class="cog" onclick="openLocationActions('${loc.id}');event.stopPropagation();">⚙️</div><div class="item-card-photo-wrapper"><img src="${imgSrc}"></div><div class="item-card-name">${adminLocationView === "flat" ? loc.fullPath : loc.name}</div>`;
+        const photoKey = loc.photo || loc.photo_path;
+        if (photoKey) window.hydrateCachedImage?.(div.querySelector("img"), "location-photos", photoKey, "../assets/images/folder-icon.jpg");
         if (adminLocationView === "hierarchy") div.onclick = () => loadLocationAdmin(loc.id); tileContainer.appendChild(div);
     });
 }
@@ -2760,7 +2775,9 @@ function getAiDescriptionImageChoices(mode) {
         (currentItemForActions?.photos || []).forEach((photo, index) => {
             choices.push({
                 label: photo.is_primary ? "Current primary photo" : `Current photo ${index + 1}`,
-                previewUrl: window.db.storage.from("item-photos").getPublicUrl(photo.file_path).data.publicUrl,
+                previewUrl: "../assets/images/no-image.jpg",
+                bucket: "item-photos",
+                filePath: photo.file_path,
             });
         });
     }
@@ -2787,6 +2804,7 @@ async function openAiDescriptionModal(mode) {
         button.className = "ai-description-photo-choice";
         button.classList.toggle("selected", index === aiDescriptionSelectedIndex);
         button.innerHTML = `<img src="${choice.previewUrl}" alt=""><span>${escapeHtml(choice.label)}</span>`;
+        if (choice.bucket && choice.filePath) window.hydrateCachedImage?.(button.querySelector("img"), choice.bucket, choice.filePath, "../assets/images/no-image.jpg");
         button.onclick = () => {
             aiDescriptionSelectedIndex = index;
             grid.querySelectorAll(".ai-description-photo-choice").forEach((option, optionIndex) => option.classList.toggle("selected", optionIndex === index));
@@ -2797,10 +2815,13 @@ async function openAiDescriptionModal(mode) {
 }
 
 async function imageChoiceToGeminiPayload(choice) {
-    const blob = choice.file || await fetch(choice.previewUrl).then(response => {
+    const cachedDataUrl = !choice.file && choice.bucket && choice.filePath ? await window.cacheStorageImage?.(choice.bucket, choice.filePath) : null;
+    const blob = choice.file || (cachedDataUrl
+        ? await fetch(cachedDataUrl).then(response => response.blob())
+        : await fetch(choice.previewUrl).then(response => {
         if (!response.ok) throw new Error("Unable to load the selected photograph");
         return response.blob();
-    });
+    }));
     const objectUrl = URL.createObjectURL(blob);
     try {
         const image = await new Promise((resolve, reject) => {
@@ -4225,7 +4246,7 @@ function openTempLocationActions(id) {
     setElementValue("editTempLocationBarcode", loc.barcode || "");
     setElementValue("editTempLocationNFC", loc.nfc_tag || "");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
-    const previewImg = document.getElementById("editTempLocationPreview"); if (loc.photo_path) previewImg.src = window.db.storage.from("location-photos").getPublicUrl(loc.photo_path).data.publicUrl; else previewImg.src = "../assets/images/folder-icon.jpg";
+    const previewImg = document.getElementById("editTempLocationPreview"); if (previewImg) previewImg.src = "../assets/images/folder-icon.jpg"; if (loc.photo_path) window.hydrateCachedImage?.(previewImg, "location-photos", loc.photo_path, "../assets/images/folder-icon.jpg");
     document.querySelector("#tempLocationActionsModal .modal-content")?._syncScanPair?.();
     document.getElementById("tempLocationActionsModal").style.display = "flex";
     markModalClean("tempLocationActionsModal");
