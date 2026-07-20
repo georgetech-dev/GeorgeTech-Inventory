@@ -686,6 +686,7 @@ function closeTopmostAppModal(modal) {
 let georgeTechBackExitArmedAt = 0;
 let georgeTechHistoryGuardReady = false;
 let georgeTechAllowBrowserExit = false;
+let georgeTechExitConfirmOpen = false;
 
 function showBackExitHint() {
     let hint = document.getElementById("georgeTechBackExitHint");
@@ -721,16 +722,25 @@ function installGeorgeTechBrowserBackGuard() {
             return;
         }
 
-        const now = Date.now();
-        if (now - georgeTechBackExitArmedAt < 2500) {
+        history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
+        requestGeorgeTechBrowserExitConfirmation();
+    });
+}
+
+async function requestGeorgeTechBrowserExitConfirmation() {
+    if (georgeTechExitConfirmOpen) return;
+    georgeTechExitConfirmOpen = true;
+    try {
+        const shouldLeave = await customConfirm("Do you want to leave GeorgeTech Inventory?", "Leave App?");
+        if (shouldLeave) {
             georgeTechAllowBrowserExit = true;
             history.go(-2);
-            return;
+        } else {
+            georgeTechBackExitArmedAt = 0;
         }
-        georgeTechBackExitArmedAt = now;
-        showBackExitHint();
-        history.pushState({ georgeTechAppGuard: 2 }, "", location.href);
-    });
+    } finally {
+        georgeTechExitConfirmOpen = false;
+    }
 }
 
 async function navigateBackInItemLocations() {

@@ -2,6 +2,7 @@ package uk.georgetech.inventory;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -279,19 +280,12 @@ public class MainActivity extends Activity {
     }
 
     private void handleUnhandledBackPress() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        if (now - lastBackPressTime < 2500) {
-            finish();
-            return;
-        }
-
-        lastBackPressTime = now;
-        Toast.makeText(this, "Press back again to exit", Toast.LENGTH_SHORT).show();
+        new AlertDialog.Builder(this)
+                .setTitle("Leave App?")
+                .setMessage("Do you want to leave GeorgeTech Inventory?")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Leave", (dialog, which) -> finish())
+                .show();
     }
 
     @Override
