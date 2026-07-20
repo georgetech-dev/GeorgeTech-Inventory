@@ -1,4 +1,4 @@
-const CACHE_NAME = 'GeorgeTech-Inventory-v20260720-back-fix2';
+const CACHE_NAME = 'GeorgeTech-Inventory-v20260720-back-diagnostics1';
 
 // These are the core files the app NEEDS to boot up offline.
 const urlsToCache = [

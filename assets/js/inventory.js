@@ -687,6 +687,37 @@ let georgeTechHistoryGuardReady = false;
 let georgeTechAllowBrowserExit = false;
 let georgeTechExitConfirmOpen = false;
 let georgeTechBackTrapSequence = 0;
+let georgeTechBackDebugEnabled = true;
+
+function getGeorgeTechBackState(extra = {}) {
+    const activePage = document.querySelector(".inventory-page.active")?.id || null;
+    const modal = getTopmostOpenModal();
+    const lightbox = document.getElementById("review-lightbox");
+    const lightboxOpen = !!(lightbox && window.getComputedStyle(lightbox).display !== "none");
+    const tagPickerOpen = !!document.querySelector(".tag-search-options.open");
+    return {
+        activePage,
+        currentLocationId,
+        locationBackStack: [...locationBackStack],
+        currentTempLocationId,
+        openModal: modal?.id || null,
+        lightboxOpen,
+        tagPickerOpen,
+        historyLength: window.history?.length || 0,
+        backTrapSequence: georgeTechBackTrapSequence,
+        exitConfirmOpen: georgeTechExitConfirmOpen,
+        allowBrowserExit: georgeTechAllowBrowserExit,
+        ...extra,
+    };
+}
+
+function logGeorgeTechBack(event, extra = {}) {
+    if (!georgeTechBackDebugEnabled) return;
+    console.info("[GeorgeTechBack]", event, getGeorgeTechBackState(extra));
+}
+
+window.debugBackState = () => getGeorgeTechBackState();
+window.setBackDebug = enabled => { georgeTechBackDebugEnabled = enabled !== false; };
 
 function showBackExitHint() {
     let hint = document.getElementById("georgeTechBackExitHint");
@@ -709,26 +740,33 @@ function installGeorgeTechBrowserBackGuard() {
     const pushBackTrap = () => {
         history.pushState({ georgeTechBackTrap: ++georgeTechBackTrapSequence }, "", location.href);
     };
+    const replenishBackTraps = () => {
+        for (let i = 0; i < 8; i += 1) pushBackTrap();
+    };
 
     history.replaceState({ georgeTechAppRoot: true }, "", location.href);
-    pushBackTrap();
-    pushBackTrap();
+    replenishBackTraps();
+    logGeorgeTechBack("guard-installed");
 
     window.addEventListener("popstate", () => {
         if (georgeTechAllowBrowserExit) return;
 
-        pushBackTrap();
-        window.setTimeout(pushBackTrap, 0);
+        replenishBackTraps();
+        window.setTimeout(replenishBackTraps, 0);
+        logGeorgeTechBack("popstate-captured");
 
         try {
             if (window.handleGeorgeTechBackButton?.()) {
+                logGeorgeTechBack("popstate-handled");
                 return;
             }
         } catch (error) {
             console.error("Browser back handler failed:", error);
+            logGeorgeTechBack("popstate-error", { error: String(error?.message || error) });
             return;
         }
 
+        logGeorgeTechBack("popstate-root-confirm");
         requestGeorgeTechBrowserExitConfirmation();
     });
 }
@@ -737,7 +775,9 @@ async function requestGeorgeTechBrowserExitConfirmation() {
     if (georgeTechExitConfirmOpen) return;
     georgeTechExitConfirmOpen = true;
     try {
+        logGeorgeTechBack("exit-confirm-open");
         const shouldLeave = await customConfirm("Do you want to leave GeorgeTech Inventory?", "Leave App?");
+        logGeorgeTechBack("exit-confirm-result", { shouldLeave });
         if (shouldLeave) {
             georgeTechAllowBrowserExit = true;
             history.go(-2);
@@ -753,29 +793,28 @@ async function navigateBackInItemLocations() {
     if (currentLocationId && currentLocationId !== "unallocated") {
         const current = await localDB.locations.get(currentLocationId);
         const stackedPrevious = locationBackStack.length ? locationBackStack[locationBackStack.length - 1] : undefined;
-        if (stackedPrevious !== undefined && String(stackedPrevious || "") !== String(current?.parent_id || "")) {
+        if (stackedPrevious !== undefined && String(stackedPrevious || "") !== String(current?.parent_id || "") && String(stackedPrevious || "") !== String(currentLocationId || "")) {
             const previous = locationBackStack.pop();
+            logGeorgeTechBack("items-back-special-stack", { previous });
             if (!previous) await loadRootLocations();
             else if (previous === "unallocated") await loadUnallocatedItems();
             else await loadLocation(previous);
             return true;
         }
-        if (locationBackStack.length) locationBackStack.pop();
-        if (current?.parent_id) await loadLocation(current.parent_id);
-        else await loadRootLocations();
-        return true;
-    }
-
-    if (locationBackStack.length) {
-        const previous = locationBackStack.pop();
-        if (!previous) await loadRootLocations();
-        else if (previous === "unallocated") await loadUnallocatedItems();
-        else await loadLocation(previous);
+        locationBackStack = [];
+        if (current?.parent_id) {
+            logGeorgeTechBack("items-back-parent", { from: currentLocationId, to: current.parent_id });
+            await loadLocation(current.parent_id);
+        } else {
+            logGeorgeTechBack("items-back-root", { from: currentLocationId });
+            await loadRootLocations();
+        }
         return true;
     }
 
     if (!currentLocationId) return false;
     if (currentLocationId === "unallocated") {
+        logGeorgeTechBack("items-back-unallocated-root");
         await loadRootLocations();
         return true;
     }
@@ -783,25 +822,34 @@ async function navigateBackInItemLocations() {
 }
 
 window.handleGeorgeTechBackButton = function() {
+    logGeorgeTechBack("handler-start");
     const lightbox = document.getElementById("review-lightbox");
     if (lightbox && window.getComputedStyle(lightbox).display !== "none") {
         closeLightbox();
+        logGeorgeTechBack("handler-close-lightbox");
         return true;
     }
 
     const openTagPicker = document.querySelector(".tag-search-options.open");
     if (openTagPicker) {
         openTagPicker.querySelector(".tag-search-options-header button")?.click();
+        logGeorgeTechBack("handler-close-tag-picker");
         return true;
     }
 
     const modal = getTopmostOpenModal();
-    if (modal) return closeTopmostAppModal(modal);
+    if (modal) {
+        const handled = closeTopmostAppModal(modal);
+        logGeorgeTechBack("handler-close-modal", { modal: modal.id, handled });
+        return handled;
+    }
 
-    if (document.getElementById("pageItems")?.classList.contains("active") && (currentLocationId || locationBackStack.length)) {
+    if (document.getElementById("pageItems")?.classList.contains("active") && currentLocationId) {
         navigateBackInItemLocations().catch(error => console.error("Location back navigation failed:", error));
+        logGeorgeTechBack("handler-items-back-queued");
         return true;
     }
+    logGeorgeTechBack("handler-unhandled");
     return false;
 };
 
