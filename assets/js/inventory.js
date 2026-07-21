@@ -732,7 +732,16 @@ function closeTopmostAppModal(modal) {
 function getFirstExistingValue(source, keys) {
     if (!source) return null;
     for (const key of keys) {
-        if (source[key] !== undefined && source[key] !== null && source[key] !== "") return source[key];
+        const value = source[key];
+        if (value !== undefined && value !== null && value !== "") {
+            if (Array.isArray(value)) {
+                const first = value[0];
+                if (first && typeof first === "object") return first.id || first.companies_id || first.company_id || null;
+                return first || null;
+            }
+            if (typeof value === "object") return value.id || value.companies_id || value.company_id || null;
+            return value;
+        }
     }
     return null;
 }
@@ -805,11 +814,29 @@ async function loadCurrentUserAuditContext(session = null) {
 
     let roleRow = null;
     try {
-        const { data: profile, error: profileError } = await window.db
+        let { data: profile, error: profileError } = await window.db
             .from("profiles")
             .select("*")
             .eq("id", currentUserId)
             .maybeSingle();
+        if (!profile && !profileError) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("*")
+                .eq("user_id", currentUserId)
+                .maybeSingle();
+            profile = fallback.data;
+            profileError = fallback.error;
+        }
+        if (!profile && currentUserEmail && !profileError) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("*")
+                .eq("email", currentUserEmail)
+                .maybeSingle();
+            profile = fallback.data;
+            profileError = fallback.error;
+        }
         if (profileError) console.warn("Unable to load profile for audit context:", profileError);
         currentUserProfile = profile || null;
         currentCompanyId = inferCompanyId(profile);
@@ -862,6 +889,13 @@ async function loadCurrentUserAuditContext(session = null) {
 
 window.getFilteredAuditLogsForCurrentUser = filterAuditLogsForCurrentUser;
 window.getCurrentCompanyId = () => currentCompanyId;
+window.getCurrentCompanyDebugState = () => ({
+    currentUserId,
+    currentUserEmail,
+    currentUserRole,
+    currentCompanyId,
+    profile: currentUserProfile
+});
 window.addCompanyScopeToPayload = addCompanyScopeToPayload;
 
 let georgeTechHistoryGuardReady = false;
@@ -1296,11 +1330,29 @@ async function getBugReportRequester() {
     const meta = user.user_metadata || {};
     let name = meta.full_name || meta.name || meta.display_name || "";
     if (user.id) {
-        const { data: profile, error: profileError } = await window.db
+        let { data: profile, error: profileError } = await window.db
             .from("profiles")
             .select("full_name")
             .eq("id", user.id)
             .maybeSingle();
+        if (!profile && !profileError) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("full_name")
+                .eq("user_id", user.id)
+                .maybeSingle();
+            profile = fallback.data;
+            profileError = fallback.error;
+        }
+        if (!profile && user.email && !profileError) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("full_name")
+                .eq("email", user.email)
+                .maybeSingle();
+            profile = fallback.data;
+            profileError = fallback.error;
+        }
         if (profileError) console.warn("Unable to load bug reporter profile:", profileError);
         if (profile?.full_name) name = profile.full_name;
     }
@@ -1999,6 +2051,16 @@ async function initInventory() {
     const { data: { session } } = await window.db.auth.getSession();
     if (session && session.user) currentUserEmail = session.user.email;
     await loadCurrentUserAuditContext(session);
+    if (!currentCompanyId && typeof localDB !== "undefined") {
+        await Promise.all([
+            localDB.items.clear(),
+            localDB.locations.clear(),
+            localDB.temp_locations.clear(),
+            localDB.tags.clear(),
+            localDB.item_categories.clear(),
+            localDB.audit_logs.clear()
+        ]);
+    }
 
     await loadInventorySettings();
     initFabScrollFade();

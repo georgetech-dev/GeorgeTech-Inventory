@@ -10,11 +10,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#004a99">
-    <link rel="stylesheet" href="../assets/css/variables.css?v=20260721-company-scope1">
-    <link rel="stylesheet" href="../assets/css/inventory-style.css?v=20260721-company-scope1">
-    <link rel="stylesheet" href="../assets/css/icons.css?v=20260721-company-scope1">
+    <link rel="stylesheet" href="../assets/css/variables.css?v=20260721-company-scope3">
+    <link rel="stylesheet" href="../assets/css/inventory-style.css?v=20260721-company-scope3">
+    <link rel="stylesheet" href="../assets/css/icons.css?v=20260721-company-scope3">
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-    <script src="../assets/js/offline-engine.js?v=20260721-company-scope1"></script>
+    <script src="../assets/js/offline-engine.js?v=20260721-company-scope3"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -1186,7 +1186,7 @@
                      <span>Inventory</span>
                 </div>
                 <span>GeorgeTech &copy; 2026</span>
-                <span class="inventory-footer-version">Build v2026.07.21-company-scope1</span>
+                <span class="inventory-footer-version">Build v2026.07.21-company-scope3</span>
             </div>
             <div class="inventory-footer-support">
                 <span>For support:</span>
@@ -1299,7 +1299,7 @@
         };
     </script>
 
-    <script src="../assets/js/inventory.js?v=20260721-company-scope1"></script>
+    <script src="../assets/js/inventory.js?v=20260721-company-scope3"></script>
     <script>
 
 
@@ -1495,15 +1495,32 @@ async function logoutUser() {
 async function updateHeaderUser(session) {
     const user = session?.user;
     const meta = user?.user_metadata || {};
-    let name = meta.full_name || meta.name || meta.display_name || user?.email?.split("@")[0] || "User";
+    let name = "";
     if (user?.id && window.db) {
-        const { data: profile } = await window.db
+        let { data: profile } = await window.db
             .from("profiles")
             .select("full_name")
             .eq("id", user.id)
             .maybeSingle();
+        if (!profile) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("full_name")
+                .eq("user_id", user.id)
+                .maybeSingle();
+            profile = fallback.data;
+        }
+        if (!profile && user.email) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("full_name")
+                .eq("email", user.email)
+                .maybeSingle();
+            profile = fallback.data;
+        }
         if (profile?.full_name) name = profile.full_name;
     }
+    if (!name) name = meta.full_name || meta.name || meta.display_name || user?.email?.split("@")[0] || "User";
     const avatar = meta.avatar_url || meta.picture || meta.avatar || "assets/images/logo.png";
     const nameEl = document.getElementById("headerUserName");
     const footerNameEl = document.getElementById("footerUserName");

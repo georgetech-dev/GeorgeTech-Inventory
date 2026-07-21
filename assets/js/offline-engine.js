@@ -114,8 +114,45 @@ window.setStatus = function(mode, msg) {
 function companyScopedSelect(table, columns = "*") {
     let query = window.db.from(table).select(columns);
     const companyId = typeof window.getCurrentCompanyId === "function" ? window.getCurrentCompanyId() : null;
-    if (companyId) query = query.eq("companies_id", companyId);
-    return query;
+    if (!companyId) throw new Error(`Cannot sync ${table}: no companies_id resolved for the signed-in user.`);
+    return query.eq("companies_id", companyId);
+}
+
+async function getCompanyScopedRemoteCount(table) {
+    const companyId = typeof window.getCurrentCompanyId === "function" ? window.getCurrentCompanyId() : null;
+    if (!companyId) return { table, companyId: null, count: null, error: "No companies_id resolved" };
+    const { count, error } = await window.db
+        .from(table)
+        .select("id", { count: "exact", head: true })
+        .eq("companies_id", companyId);
+    return { table, companyId, count, error: error ? error.message || String(error) : null };
+}
+
+window.debugCompanySync = async function() {
+    const tables = ["items", "locations", "temp_locations", "tags", "item_categories", "audit_logs"];
+    const remote = [];
+    for (const table of tables) remote.push(await getCompanyScopedRemoteCount(table));
+    const local = {
+        items: await localDB.items.count(),
+        locations: await localDB.locations.count(),
+        temp_locations: await localDB.temp_locations.count(),
+        tags: await localDB.tags.count(),
+        item_categories: await localDB.item_categories.count(),
+        audit_logs: await localDB.audit_logs.count()
+    };
+    const state = typeof window.getCurrentCompanyDebugState === "function" ? window.getCurrentCompanyDebugState() : {};
+    return { state, remote, local };
+};
+
+async function clearCompanyScopedLocalTables() {
+    await Promise.all([
+        localDB.items.clear(),
+        localDB.locations.clear(),
+        localDB.temp_locations.clear(),
+        localDB.tags.clear(),
+        localDB.item_categories.clear(),
+        localDB.audit_logs.clear()
+    ]);
 }
 
 // 5. Global Data Down-Sync (Downloads Supabase -> Saves to Dexie)
@@ -126,6 +163,13 @@ window.syncDatabaseToLocal = async function() {
     
     try {
         console.log("🔄 Starting Down-Sync...");
+
+        const companyId = typeof window.getCurrentCompanyId === "function" ? window.getCurrentCompanyId() : null;
+        if (!companyId) {
+            await clearCompanyScopedLocalTables();
+            if (typeof refreshAllDataFromLocal === "function") await refreshAllDataFromLocal();
+            throw new Error("No companies_id was resolved for this user. Local inventory cache cleared to prevent cross-company data leakage.");
+        }
 
         // 1. Sync Items
         const { data: itemsData, error: itemsErr } = await companyScopedSelect('items', '*, photos(file_path, is_primary)');
@@ -217,7 +261,7 @@ function addCompanyScopeToSyncPayload(table, payload) {
     if (!payload || typeof payload !== "object" || !companyScopedTables.has(table)) return payload;
     if (payload.companies_id) return payload;
     const companyId = typeof window.getCurrentCompanyId === "function" ? window.getCurrentCompanyId() : null;
-    if (!companyId) return payload;
+    if (!companyId) throw new Error(`Cannot write ${table}: no companies_id resolved for the signed-in user.`);
     return { ...payload, companies_id: companyId };
 }
 
