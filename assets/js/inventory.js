@@ -42,7 +42,15 @@ let currentSortModeLocations = "name_asc";
 let itemsBrowserMode = "hierarchy";
 
 let currentUserEmail = "Unknown User";
+let currentUserId = null;
+let currentUserRole = "engineer";
+let currentUserProfile = null;
+let currentCompanyId = null;
+let currentCompanyMemberEmails = new Set();
+let currentCompanyMemberIds = new Set();
 let allAuditLogs = [];
+const CURRENT_APP_NAME = "GeorgeTech Inventory";
+const AUDIT_APP_ALIASES = new Set(["georgetech inventory", "inventory", "parts", "parts.georgetech.uk"]);
 
 let userSettings = {
     view: 'medium',
@@ -721,6 +729,141 @@ function closeTopmostAppModal(modal) {
     return true;
 }
 
+function getFirstExistingValue(source, keys) {
+    if (!source) return null;
+    for (const key of keys) {
+        if (source[key] !== undefined && source[key] !== null && source[key] !== "") return source[key];
+    }
+    return null;
+}
+
+function inferCompanyId(row) {
+    return getFirstExistingValue(row, ["companies_id", "company_id", "company", "organisation_id", "organization_id", "org_id", "tenant_id", "account_id", "business_id"]);
+}
+
+function addCompanyScopeToPayload(payload) {
+    if (!payload || typeof payload !== "object" || !currentCompanyId) return payload;
+    return { ...payload, companies_id: currentCompanyId };
+}
+
+function inferUserRole(profile, roleRow) {
+    const role = getFirstExistingValue(roleRow, ["role", "user_role", "role_name"])
+        || getFirstExistingValue(profile, ["role", "user_role", "role_name", "access_level"]);
+    return String(role || "engineer").trim().toLowerCase();
+}
+
+function normaliseAuditApp(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function getAuditLogAppName(log) {
+    return getFirstExistingValue(log, ["app_name", "app", "application", "product", "source_app", "module"]);
+}
+
+function auditLogMatchesCurrentApp(log) {
+    const appName = normaliseAuditApp(getAuditLogAppName(log));
+    if (!appName) return true;
+    return AUDIT_APP_ALIASES.has(appName);
+}
+
+function auditLogBelongsToCurrentCompany(log) {
+    const logCompanyId = inferCompanyId(log);
+    if (currentCompanyId && logCompanyId) return String(logCompanyId) === String(currentCompanyId);
+    const logUserId = log.user_id || log.user || log.created_by || null;
+    if (logUserId && currentCompanyMemberIds.size > 0) return currentCompanyMemberIds.has(String(logUserId));
+    const logEmail = String(log.user_email || log.email || "").trim().toLowerCase();
+    if (logEmail && currentCompanyMemberEmails.size > 0) return currentCompanyMemberEmails.has(logEmail);
+    return !currentCompanyId;
+}
+
+function auditLogIsVisibleInCurrentApp(log) {
+    const role = String(currentUserRole || "engineer").toLowerCase();
+    const logEmail = String(log.user_email || log.email || "").trim().toLowerCase();
+    const logUserId = String(log.user_id || log.user || log.created_by || "");
+    const ownLog = (currentUserId && logUserId === String(currentUserId)) || (currentUserEmail && logEmail === String(currentUserEmail).toLowerCase());
+    if (role === "engineer") return ownLog;
+    if (role === "superadmin") return auditLogMatchesCurrentApp(log);
+    if (role === "admin" || role === "owner" || role === "manager") return auditLogBelongsToCurrentCompany(log) && auditLogMatchesCurrentApp(log);
+    return ownLog;
+}
+
+function filterAuditLogsForCurrentUser(logs) {
+    return (logs || []).filter(auditLogIsVisibleInCurrentApp);
+}
+
+async function loadCurrentUserAuditContext(session = null) {
+    const activeSession = session || (await window.db.auth.getSession())?.data?.session;
+    const user = activeSession?.user;
+    currentUserId = user?.id || null;
+    currentUserEmail = user?.email || currentUserEmail || "Unknown User";
+    currentUserProfile = null;
+    currentCompanyId = null;
+    currentCompanyMemberEmails = new Set();
+    currentCompanyMemberIds = new Set();
+
+    if (!currentUserId || !window.db) return;
+
+    let roleRow = null;
+    try {
+        const { data: profile, error: profileError } = await window.db
+            .from("profiles")
+            .select("*")
+            .eq("id", currentUserId)
+            .maybeSingle();
+        if (profileError) console.warn("Unable to load profile for audit context:", profileError);
+        currentUserProfile = profile || null;
+        currentCompanyId = inferCompanyId(profile);
+    } catch (error) {
+        console.warn("Profile audit context lookup failed:", error);
+    }
+
+    try {
+        const { data, error } = await window.db
+            .from("user_roles")
+            .select("*")
+            .eq("user_id", currentUserId)
+            .maybeSingle();
+        if (!error) roleRow = data || null;
+    } catch (error) {
+        console.warn("Role audit context lookup failed:", error);
+    }
+
+    currentUserRole = inferUserRole(currentUserProfile, roleRow);
+
+    if (currentUserEmail) currentCompanyMemberEmails.add(String(currentUserEmail).toLowerCase());
+    if (currentUserId) currentCompanyMemberIds.add(String(currentUserId));
+
+    if (!currentCompanyId) return;
+    try {
+        let { data: companyProfiles, error } = await window.db
+            .from("profiles")
+            .select("*")
+            .eq("companies_id", currentCompanyId);
+        if (error) {
+            const fallback = await window.db
+                .from("profiles")
+                .select("*")
+                .eq("company_id", currentCompanyId);
+            companyProfiles = fallback.data;
+            error = fallback.error;
+        }
+        if (!error && Array.isArray(companyProfiles)) {
+            companyProfiles.forEach(profile => {
+                const id = profile.id || profile.user_id;
+                const email = profile.email || profile.user_email;
+                if (id) currentCompanyMemberIds.add(String(id));
+                if (email) currentCompanyMemberEmails.add(String(email).toLowerCase());
+            });
+        }
+    } catch (error) {
+        console.warn("Company profile audit context lookup failed:", error);
+    }
+}
+
+window.getFilteredAuditLogsForCurrentUser = filterAuditLogsForCurrentUser;
+window.getCurrentCompanyId = () => currentCompanyId;
+window.addCompanyScopeToPayload = addCompanyScopeToPayload;
+
 let georgeTechHistoryGuardReady = false;
 let georgeTechAllowBrowserExit = false;
 let georgeTechExitConfirmOpen = false;
@@ -1256,7 +1399,24 @@ if (document.readyState === "loading") {
 async function logAction(actionType, targetEntity, targetName, details = "") {
     if (!window.isAppOnline) return; // Skip audit logs if offline for now
     try {
-        await window.db.from("audit_logs").insert([{ user_email: currentUserEmail, action_type: actionType, target_entity: targetEntity, target_name: targetName, details: details }]);
+        const basePayload = {
+            user_email: currentUserEmail,
+            action_type: actionType,
+            target_entity: targetEntity,
+            target_name: targetName,
+            details: details
+        };
+        const enrichedPayload = {
+            ...basePayload,
+            user_id: currentUserId,
+            companies_id: currentCompanyId,
+            app_name: CURRENT_APP_NAME
+        };
+        const { error } = await window.db.from("audit_logs").insert([enrichedPayload]);
+        if (error) {
+            const fallback = await window.db.from("audit_logs").insert([basePayload]);
+            if (fallback.error) throw fallback.error;
+        }
     } catch(e) { console.error("Audit log failed:", e); }
 }
 // Mapping emails to shorthand
@@ -1271,7 +1431,7 @@ async function loadAuditLogs() {
     try {
         const logs = await localDB.audit_logs.toArray();
         // Sort newest-first
-        allAuditLogs = logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        allAuditLogs = filterAuditLogsForCurrentUser(logs).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         filterAuditLogs();
         console.log("Logs loaded:", allAuditLogs.length);
     } catch (e) {
@@ -1298,9 +1458,10 @@ function filterAuditLogs() {
         else if (dateFilter === "YEAR") matchDate = logDate.getFullYear() === now.getFullYear();
 
         const matchAction = actionFilter === "ALL" || log.action_type === actionFilter;
-        const matchSearch = (log.target_name || "").toLowerCase().includes(searchTerm) || 
-                            (log.user_email || "").toLowerCase().includes(searchTerm) || 
-                            (log.details || "").toLowerCase().includes(searchTerm);
+        const matchSearch = (log.target_name || "").toLowerCase().includes(searchTerm) ||
+                            (log.user_email || "").toLowerCase().includes(searchTerm) ||
+                            (log.details || "").toLowerCase().includes(searchTerm) ||
+                            (getAuditLogAppName(log) || "").toLowerCase().includes(searchTerm);
         
         return matchDate && matchAction && matchSearch;
     });
@@ -1312,7 +1473,8 @@ function filterAuditLogs() {
 
     filtered.forEach(log => {
         const date = new Date(log.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
-        const shortName = userMap[log.user_email] || log.user_email.split('@')[0];
+        const email = String(log.user_email || log.email || "Unknown User");
+        const shortName = userMap[email] || email.split('@')[0];
         
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -1836,6 +1998,7 @@ function changeAdminLocationView(view) { adminLocationView = view; refreshLocati
 async function initInventory() {
     const { data: { session } } = await window.db.auth.getSession();
     if (session && session.user) currentUserEmail = session.user.email;
+    await loadCurrentUserAuditContext(session);
 
     await loadInventorySettings();
     initFabScrollFade();
@@ -3669,7 +3832,7 @@ async function addItem(addAnother = false) {
             if (currentAddItemFiles.length > 0) {
                 if (!primaryPhotoIdentifier) primaryPhotoIdentifier = currentAddItemFiles[0].name;
                 if (window.isAppOnline) {
-                    const remotePayload = { ...payload, id: newItemId };
+                    const remotePayload = addCompanyScopeToPayload({ ...payload, id: newItemId });
                     await window.db.from("items").upsert([remotePayload]);
                     try {
                         uploadedPhotoRows = await uploadItemPhotoFiles(newItemId, currentAddItemFiles, primaryPhotoIdentifier, 0);
@@ -4570,7 +4733,7 @@ async function addTempLocation(addAnother = false) {
         if (!uploadError) uploadedPhotoPath = fileName;
     }
      
-    const { error } = await withStatus(() => window.db.from("temp_locations").insert([{ name, description: desc, barcode, nfc_tag, photo_path: uploadedPhotoPath }]), "Creating...");
+    const { error } = await withStatus(() => window.db.from("temp_locations").insert([addCompanyScopeToPayload({ name, description: desc, barcode, nfc_tag, photo_path: uploadedPhotoPath })]), "Creating...");
     if (!error) {
         logAction("CREATE", "Temp Location", name, "Created new assignee profile");
         await syncAfterWrite();

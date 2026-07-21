@@ -111,6 +111,13 @@ window.setStatus = function(mode, msg) {
     statusBox.innerHTML = msg;
 }
 
+function companyScopedSelect(table, columns = "*") {
+    let query = window.db.from(table).select(columns);
+    const companyId = typeof window.getCurrentCompanyId === "function" ? window.getCurrentCompanyId() : null;
+    if (companyId) query = query.eq("companies_id", companyId);
+    return query;
+}
+
 // 5. Global Data Down-Sync (Downloads Supabase -> Saves to Dexie)
 window.syncDatabaseToLocal = async function() {
     if (!window.isAppOnline) return; // Abort if offline
@@ -121,7 +128,7 @@ window.syncDatabaseToLocal = async function() {
         console.log("🔄 Starting Down-Sync...");
 
         // 1. Sync Items
-        const { data: itemsData, error: itemsErr } = await window.db.from('items').select('*, photos(file_path, is_primary)');
+        const { data: itemsData, error: itemsErr } = await companyScopedSelect('items', '*, photos(file_path, is_primary)');
         if (!itemsErr && itemsData) {
             await localDB.items.clear();
             await localDB.items.bulkPut(itemsData);
@@ -129,7 +136,7 @@ window.syncDatabaseToLocal = async function() {
         } else { console.warn("⚠️ Items sync failed:", itemsErr); }
 
         // 2. Sync Locations
-        const { data: locData, error: locErr } = await window.db.from('locations').select('*');
+        const { data: locData, error: locErr } = await companyScopedSelect('locations');
         if (!locErr && locData) {
             await localDB.locations.clear();
             await localDB.locations.bulkPut(locData);
@@ -137,7 +144,7 @@ window.syncDatabaseToLocal = async function() {
         } else { console.warn("⚠️ Locations sync failed:", locErr); }
 
         // 3. Sync Assignees (Temp Locations)
-        const { data: tempData, error: tempErr } = await window.db.from('temp_locations').select('*');
+        const { data: tempData, error: tempErr } = await companyScopedSelect('temp_locations');
         if (!tempErr && tempData) {
             await localDB.temp_locations.clear();
             await localDB.temp_locations.bulkPut(tempData);
@@ -145,7 +152,7 @@ window.syncDatabaseToLocal = async function() {
         } else { console.warn("⚠️ Assignees sync failed:", tempErr); }
 
         // 4. Sync Tags
-        const { data: tagData, error: tagErr } = await window.db.from('tags').select('*');
+        const { data: tagData, error: tagErr } = await companyScopedSelect('tags');
         if (!tagErr && tagData) {
             await localDB.tags.clear();
             await localDB.tags.bulkPut(tagData);
@@ -153,7 +160,7 @@ window.syncDatabaseToLocal = async function() {
         } else { console.warn("⚠️ Tags sync failed:", tagErr); }
 
         // 5. Sync Categories
-        const { data: catData, error: catErr } = await window.db.from('item_categories').select('*');
+        const { data: catData, error: catErr } = await companyScopedSelect('item_categories');
         if (!catErr && catData) {
             await localDB.item_categories.clear();
             await localDB.item_categories.bulkPut(catData);
@@ -161,11 +168,14 @@ window.syncDatabaseToLocal = async function() {
         } else { console.warn("⚠️ Categories sync failed:", catErr); }
 
         // 6. Sync Audit Logs (Limit to 200 so we don't overload the phone)
-        const { data: auditData, error: auditErr } = await window.db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+        const { data: auditData, error: auditErr } = await companyScopedSelect('audit_logs').order('created_at', { ascending: false }).limit(500);
         if (!auditErr && auditData) {
+            const visibleAuditData = typeof window.getFilteredAuditLogsForCurrentUser === "function"
+                ? window.getFilteredAuditLogsForCurrentUser(auditData)
+                : auditData;
             await localDB.audit_logs.clear();
-            await localDB.audit_logs.bulkPut(auditData);
-            console.log(`📥 Synced ${auditData.length} Audit Logs`);
+            await localDB.audit_logs.bulkPut(visibleAuditData.slice(0, 200));
+            console.log(`📥 Synced ${visibleAuditData.length} Audit Logs`);
         } else { console.warn("⚠️ Audit Logs sync failed:", auditErr); }
 
         console.log("✅ Offline Database fully synced with Supabase!");
@@ -202,11 +212,20 @@ function sanitizeSyncPayload(table, payload) {
     return clean;
 }
 
+function addCompanyScopeToSyncPayload(table, payload) {
+    const companyScopedTables = new Set(["items", "locations", "temp_locations", "tags", "item_categories", "audit_logs"]);
+    if (!payload || typeof payload !== "object" || !companyScopedTables.has(table)) return payload;
+    if (payload.companies_id) return payload;
+    const companyId = typeof window.getCurrentCompanyId === "function" ? window.getCurrentCompanyId() : null;
+    if (!companyId) return payload;
+    return { ...payload, companies_id: companyId };
+}
+
 // 6. Universal Offline Writer (Upgraded with Client-Side UUIDs)
 window.offlineSafeWrite = async function(action, table, payload, recordId = null) {
     try {
         let finalId = recordId;
-        let localPayload = sanitizeSyncPayload(table, payload);
+        let localPayload = addCompanyScopeToSyncPayload(table, sanitizeSyncPayload(table, payload));
         
         // 1. Save to Local Dexie DB first (Optimistic UI)
         if (action === 'CREATE') {
@@ -247,7 +266,7 @@ window.processSyncQueue = async function() {
             window.setStatus("syncing", `<span style="margin-right: 5px; font-weight: bold;">${pendingTasks.length}</span><div class="icon icon-cloud-arrow-up-duotone"></div>`);
             for (const task of pendingTasks) {
                 let error = null;
-                const syncPayload = sanitizeSyncPayload(task.table, task.payload);
+                const syncPayload = addCompanyScopeToSyncPayload(task.table, sanitizeSyncPayload(task.table, task.payload));
 
                 if (task.action === 'CREATE') {
                     const { error: err } = await window.db.from(task.table).upsert([syncPayload]);
