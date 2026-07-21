@@ -9,7 +9,7 @@
   "background_color": "#f8fafc",
   "theme_color": "#004a99",
   "orientation": "portrait",
-  "description": "GeorgeTech inventory, locations, barcode and NFC management.",
+  "description": "GeorgeTech inventory browser, barcode and NFC management.",
   "categories": ["business", "productivity", "utilities"],
   "prefer_related_applications": false,
   "icons": [

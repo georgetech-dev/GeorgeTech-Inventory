@@ -10,11 +10,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon-16x16.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#004a99">
-    <link rel="stylesheet" href="../assets/css/variables.css?v=20260720-native-exit1">
-    <link rel="stylesheet" href="../assets/css/inventory-style.css?v=20260720-native-exit1">
-    <link rel="stylesheet" href="../assets/css/icons.css?v=20260720-native-exit1">
+    <link rel="stylesheet" href="../assets/css/variables.css?v=20260720-browser-locations1">
+    <link rel="stylesheet" href="../assets/css/inventory-style.css?v=20260720-browser-locations1">
+    <link rel="stylesheet" href="../assets/css/icons.css?v=20260720-browser-locations1">
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-    <script src="../assets/js/offline-engine.js?v=20260720-native-exit1"></script>
+    <script src="../assets/js/offline-engine.js?v=20260720-browser-locations1"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -181,7 +181,7 @@
 
         <div class="inventory-app-header" aria-hidden="true">
             <div class="app-branding">
-                <a class="app-logo-link" href="https://GeorgeTech.uk/appscreen.html" title="GeorgeTech">
+                <a class="app-logo-link" href="https://georgetech.uk/appscreen.html" title="GeorgeTech">
                     <img class="app-logo-img" src="assets/images/logo.png" alt="GeorgeTech">
                 </a>
                 <div class="app-titles">
@@ -201,11 +201,8 @@
         </div>
 
         <nav class="inventory-nav-bar">
-            <a class="tab-link active" id="tab-items" onclick="showPage('pageItems')" title="Items Browser">
-                <span class="tab-icon"><div class="icon icon-binoculars-duotone"></div></span><span class="tab-text">Items</span>
-            </a>
-            <a class="tab-link" id="tab-locations" onclick="showPage('pageLocations')" title="Manage Locations">
-                <span class="tab-icon"><div class="icon icon-folder-open-duotone"></div></span><span class="tab-text">Locations</span>
+            <a class="tab-link active" id="tab-items" onclick="showPage('pageItems')" title="Browser">
+                <span class="tab-icon"><div class="icon icon-binoculars-duotone"></div></span><span class="tab-text">Browser</span>
             </a>
             <a class="tab-link" id="tab-temp-locations" onclick="showPage('pageTempLocations')" title="Assigned Log">
                 <span class="tab-icon"><div class="icon icon-user-circle-check-duotone"></div></span><span class="tab-text">Assigned</span>
@@ -267,7 +264,7 @@
 
 
 
-            <div class="location-nav"><div id="breadcrumb" style="font-weight: bold; font-size: 1.1em;">Items</div></div>
+            <div class="location-nav"><div id="breadcrumb" style="font-weight: bold; font-size: 1.1em;">Browser</div></div>
             <div id="locationTiles" class="items-grid"></div>
             <div id="itemTiles" class="items-grid" style="margin-top: 20px;"></div>
             <div class="items-table-wrapper" id="itemsTableWrapper"></div>
@@ -753,6 +750,7 @@
                 <div style="flex-grow: 1;"><label>NFC Tag</label><input id="editLocationNFC" type="text" style="margin-bottom: 0;"></div>
                 <button class="btn-outline" style="padding: 10px; height: 42px;" onclick="handleNfcButtonPress('editLocationNFC')">NFC</button>
             </div>
+            <label>Parent Location</label><select id="editLocationParent"></select>
             <label>Category</label><select id="editLocationCategory"></select>
             <div class="modal-buttons" style="margin-top: 20px; justify-content: space-between;">
                 <button class="btn-danger" onclick="attemptDeleteLocation()">Delete Location</button>
@@ -1188,12 +1186,12 @@
                      <span>Inventory</span>
                 </div>
                 <span>GeorgeTech &copy; 2026</span>
-                <span class="inventory-footer-version">Build v2026.07.20-native-exit1</span>
+                <span class="inventory-footer-version">Build v2026.07.20-browser-locations1</span>
             </div>
             <div class="inventory-footer-support">
                 <span>For support:</span>
-                <span>visit: <a href="https://GeorgeTech.uk/support">GeorgeTech.uk/support</a></span>
-                <span>or email: <a href="mailto:support@GeorgeTech.uk">support@GeorgeTech.uk</a></span>
+                <span>visit: <a href="https://georgetech.uk/support">georgetech.uk/support</a></span>
+                <span>or email: <a href="mailto:support@georgetech.uk">support@georgetech.uk</a></span>
             </div>
             <div class="inventory-footer-user">Logged in as: <span id="footerUserName">User</span></div>
             <button class="footer-logout-btn" onclick="logoutUser()">Log out</button>
@@ -1301,7 +1299,7 @@
         };
     </script>
 
-    <script src="../assets/js/inventory.js?v=20260720-native-exit1"></script>
+    <script src="../assets/js/inventory.js?v=20260720-browser-locations1"></script>
     <script>
 
 
@@ -1342,7 +1340,7 @@
         }
 
         let lastActivePageId = null;
-        const mainTabOrder = ["pageItems", "pageLocations", "pageTempLocations", "pageTags", "pageCategories", "pageSettings"];
+        const mainTabOrder = ["pageItems", "pageTempLocations", "pageTags", "pageCategories", "pageSettings"];
         const settingsTabOrder = ["settings-diagnostics", "settings-backups", "settings-reports", "settings-logs"];
         let swipeStartX = 0;
         let swipeStartY = 0;
@@ -1437,13 +1435,6 @@
                 }
                 if (pageId === "pageItems") {
                     if (fabItem) fabItem.style.display = "flex";
-                    if (fabLoc) fabLoc.style.display = "none";
-                    if (fabTempLoc) fabTempLoc.style.display = "none";
-                    if (fabTag) fabTag.style.display = "none";
-                    if (fabCategory) fabCategory.style.display = "none";
-                    if (fabFilter) fabFilter.style.display = "flex";
-                } else if (pageId === "pageLocations") {
-                    if (fabItem) fabItem.style.display = "none";
                     if (fabLoc) fabLoc.style.display = "flex";
                     if (fabTempLoc) fabTempLoc.style.display = "none";
                     if (fabTag) fabTag.style.display = "none";

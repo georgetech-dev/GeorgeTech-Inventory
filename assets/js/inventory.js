@@ -61,12 +61,50 @@ function buildLocationPath(id) {
     let loc = locationsAdmin.find(l => l.id === id);
     if (!loc) return "";
     const parts = [loc.name];
-    while (loc.parent) {
-        loc = locationsAdmin.find(l => l.id === loc.parent);
+    while (getLocationParentId(loc)) {
+        loc = locationsAdmin.find(l => l.id === getLocationParentId(loc));
         if (!loc) break;
         parts.unshift(loc.name);
     }
     return parts.join(" > ");
+}
+
+function getLocationParentId(location) {
+    return location?.parent_id || location?.parent || null;
+}
+
+function getLocationDescendantIds(locationId) {
+    const descendants = new Set();
+    const pending = [locationId];
+    while (pending.length > 0) {
+        const parentId = pending.pop();
+        (locationsAdmin || []).forEach(loc => {
+            if (String(getLocationParentId(loc) || "") === String(parentId || "") && !descendants.has(loc.id)) {
+                descendants.add(loc.id);
+                pending.push(loc.id);
+            }
+        });
+    }
+    return descendants;
+}
+
+function wouldCreateLocationCycle(locationId, parentId) {
+    if (!locationId || !parentId) return false;
+    if (String(locationId) === String(parentId)) return true;
+    return getLocationDescendantIds(locationId).has(parentId);
+}
+
+function loadLocationParentOptions(selectId, selectedParentId = "", editingId = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const blockedIds = editingId ? getLocationDescendantIds(editingId) : new Set();
+    if (editingId) blockedIds.add(editingId);
+    const options = (locationsAdmin || [])
+        .filter(loc => loc?.id && !blockedIds.has(loc.id))
+        .map(loc => ({ id: loc.id, label: buildLocationPath(loc.id) || loc.name || "Unnamed Location" }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    select.innerHTML = '<option value="">Browser top level</option>' + options.map(option => `<option value="${option.id}">${escapeHtml(option.label)}</option>`).join("");
+    select.value = selectedParentId || "";
 }
 
 function clearSearch() {
@@ -795,7 +833,7 @@ async function applyGeorgeTechHistoryState(state) {
             document.querySelectorAll(".inventory-page").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".tab-link").forEach(b => b.classList.remove("active"));
             document.getElementById(state.page)?.classList.add("active");
-            const tabMap = { pageItems: "tab-items", pageLocations: "tab-locations", pageTempLocations: "tab-temp-locations", pageTags: "tab-tags", pageCategories: "tab-categories", pageSettings: "tab-settings" };
+            const tabMap = { pageItems: "tab-items", pageTempLocations: "tab-temp-locations", pageTags: "tab-tags", pageCategories: "tab-categories", pageSettings: "tab-settings" };
             document.getElementById(tabMap[state.page])?.classList.add("active");
         }
         if (state.page === "pageItems") {
@@ -804,7 +842,6 @@ async function applyGeorgeTechHistoryState(state) {
             else await loadRootLocations();
             return true;
         }
-        if (state.page === "pageLocations") loadLocationsAdmin();
         if (state.page === "pageTempLocations") loadTempLocationsAdmin();
         if (state.page === "pageTags") loadTagsAdmin();
         if (state.page === "pageCategories") loadCategoriesAdmin();
@@ -1885,7 +1922,7 @@ function showPage(pageId) {
     document.querySelectorAll(".tab-link").forEach(b => b.classList.remove("active"));
     
     const page = document.getElementById(pageId); if (page) page.classList.add("active");
-    const tabMap = { 'pageItems': 'tab-items', 'pageLocations': 'tab-locations', 'pageTempLocations': 'tab-temp-locations', 'pageTags': 'tab-tags', 'pageCategories': 'tab-categories', 'pageSettings': 'tab-settings' };
+    const tabMap = { 'pageItems': 'tab-items', 'pageTempLocations': 'tab-temp-locations', 'pageTags': 'tab-tags', 'pageCategories': 'tab-categories', 'pageSettings': 'tab-settings' };
     const tab = document.getElementById(tabMap[pageId]); if (tab) tab.classList.add("active");
 
     if (pageId !== "pageTempLocations") currentTempLocationId = null;
@@ -1894,7 +1931,6 @@ function showPage(pageId) {
         if (itemsBrowserMode === "flat") loadAllItemsFlat();
         else { if (currentLocationId === "unallocated") loadUnallocatedItems(); else if (currentLocationId) loadLocation(currentLocationId); else loadRootLocations(); }
     }
-    if (pageId === "pageLocations") loadLocationsAdmin();
     if (pageId === "pageTempLocations") loadTempLocationsAdmin();
     if (pageId === "pageTags") loadTagsAdmin();
     if (pageId === "pageCategories") loadCategoriesAdmin();
@@ -1919,14 +1955,7 @@ function showPage(pageId) {
         
         if (pageId === "pageItems") {
             if (fabItem) fabItem.style.display = "flex";
-            if (fabLoc) fabLoc.style.display = "none";  // Hidden on Items Browser
-            if (fabTempLoc) fabTempLoc.style.display = "none";
-            if (fabTag) fabTag.style.display = "none";
-            if (fabCategory) fabCategory.style.display = "none";
-            if (fabFilter) fabFilter.style.display = "flex";
-        } else if (pageId === "pageLocations") {
-            if (fabItem) fabItem.style.display = "none";
-            if (fabLoc) fabLoc.style.display = "flex";  // Only show on Locations tab
+            if (fabLoc) fabLoc.style.display = "flex";
             if (fabTempLoc) fabTempLoc.style.display = "none";
             if (fabTag) fabTag.style.display = "none";
             if (fabCategory) fabCategory.style.display = "none";
@@ -1969,7 +1998,7 @@ function showPage(pageId) {
 async function loadRootLocations() {
     currentLocationId = null; locationHistory = []; locationBackStack = [];
     const container = document.getElementById("breadcrumb");
-    if (container) container.innerHTML = '<span class="breadcrumb-link active">Items</span>';
+    if (container) container.innerHTML = '<span class="breadcrumb-link active">Browser</span>';
     const allLocs = await localDB.locations.toArray();
     const rootLocs = allLocs.filter(l => !l.parent_id);
     currentBrowserLocations = [...rootLocs, { id: "unallocated", name: "Unallocated Items" }];
@@ -2006,10 +2035,38 @@ function openAddLocationForCurrentItemFolder() {
     openAddLocationModal();
 }
 
+function createBrowserActionTile(kind) {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = `item-card browser-action-tile browser-action-tile-${kind}`;
+    if (kind === "location") {
+        tile.onclick = () => openAddLocationForCurrentItemFolder();
+        tile.innerHTML = `
+            <div class="item-card-photo-wrapper browser-action-icon"><div class="icon icon-folder-plus-duotone"></div></div>
+            <div class="item-card-qty-badge" style="background:#ff8c00;">Folder</div>
+            <div class="item-card-name">Add new location</div>
+        `;
+    } else {
+        tile.onclick = () => openAddItemModal();
+        tile.innerHTML = `
+            <div class="item-card-photo-wrapper browser-action-icon"><div class="icon icon-file-plus-duotone"></div></div>
+            <div class="item-card-qty-badge" style="background:#004a99;">Item</div>
+            <div class="item-card-name">Add new item</div>
+        `;
+    }
+    return tile;
+}
+
+function renderBrowserActionTiles(container) {
+    if (!container || itemsBrowserMode !== "hierarchy") return;
+    container.appendChild(createBrowserActionTile("location"));
+    container.appendChild(createBrowserActionTile("item"));
+}
+
 async function loadUnallocatedItems() {
     currentLocationId = "unallocated";
     const container = document.getElementById("breadcrumb");
-    if (container) container.innerHTML = `<span class="breadcrumb-link" onclick="loadRootLocations()">Items</span><span class="breadcrumb-separator"> > </span><span class="breadcrumb-link active">Unallocated Items</span>`;
+    if (container) container.innerHTML = `<span class="breadcrumb-link" onclick="loadRootLocations()">Browser</span><span class="breadcrumb-separator"> > </span><span class="breadcrumb-link active">Unallocated Items</span>`;
     currentBrowserLocations = [];
     const allItems = await localDB.items.toArray(); currentBrowserItems = allItems.filter(i => !i.location_id);
     renderLocations([]); renderItems(currentBrowserItems);
@@ -2033,7 +2090,7 @@ async function buildBreadcrumb(location) {
     }
     locationHistory = chain.slice(0, -1).map(l => l.id);
     const container = document.getElementById("breadcrumb"); if (!container) return; container.innerHTML = "";
-    const rootLink = document.createElement("span"); rootLink.className = "breadcrumb-link"; rootLink.textContent = "Items"; rootLink.onclick = () => loadRootLocations(); container.appendChild(rootLink);
+    const rootLink = document.createElement("span"); rootLink.className = "breadcrumb-link"; rootLink.textContent = "Browser"; rootLink.onclick = () => loadRootLocations(); container.appendChild(rootLink);
     chain.forEach((l, idx) => {
         const sep = document.createElement("span"); sep.className = "breadcrumb-separator"; sep.textContent = " > "; container.appendChild(sep);
         const link = document.createElement("span"); link.className = "breadcrumb-link"; link.textContent = l.name;
@@ -2414,6 +2471,7 @@ function renderLocations(locations) {
         if (photoKey && photoKey !== "null" && photoKey !== "undefined") imgSrc = "../assets/images/folder-icon.jpg";
         
         tile.innerHTML = `
+            ${loc.id !== "unallocated" ? `<button type="button" class="browser-location-settings-btn" title="Location settings" onclick="event.stopPropagation(); openLocationActions('${loc.id}')"><div class="icon icon-gear-duotone"></div></button>` : ""}
             <div class="item-card-photo-wrapper">
                 <img src="${imgSrc}" onerror="this.onerror=null; this.src='../assets/images/folder-icon.jpg';">
             </div>
@@ -2503,17 +2561,15 @@ function renderItems(items) {
             ? `Unable to find item: ${escapeHtml(searchTerm)}${exactLocationMatch ? `<br><span style="display:block; margin-top:6px;">${escapeHtml(exactLocationMatch.name)} is empty!</span>` : ""}`
             : `${escapeHtml(emptyName)} is empty!`;
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #999; padding: 30px; font-style: italic;">Empty directory context</td></tr>`;
-        const addLocationTile = currentLocationId && currentLocationId !== "unallocated"
-            ? `<button type="button" class="item-card location-card empty-add-location-tile" onclick="openAddLocationForCurrentItemFolder()">
-                    <div class="item-card-photo-wrapper empty-add-location-icon">+</div>
-                    <div class="item-card-qty-badge" style="background:#ff8c00;">Folder</div>
-                    <div class="item-card-name">Add new location</div>
-                </button>`
-            : "";
         container.style.display = "grid";
-        container.innerHTML = addLocationTile || `<div style="padding: 40px; text-align: center; color: #64748b; font-size: 16px; font-weight: 600; font-style: italic; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; margin-top: 10px;">${emptyMessage}</div>`;
+        renderBrowserActionTiles(container);
+        const emptyPanel = document.createElement("div");
+        emptyPanel.style.cssText = "padding: 40px; text-align: center; color: #64748b; font-size: 16px; font-weight: 600; font-style: italic; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; margin-top: 10px;";
+        emptyPanel.innerHTML = emptyMessage;
+        container.appendChild(emptyPanel);
     } else {
         container.style.display = "grid";
+        renderBrowserActionTiles(container);
         combinedList.forEach(row => {
             const tr = document.createElement("tr"); tr.style.cursor = "pointer"; if (!row.isLocation && row.id === lastMovedItemId) tr.classList.add("moved-item-highlight");
             let rowImgSrc = "../assets/images/no-image.jpg"; 
@@ -3866,6 +3922,7 @@ function ensureEditLocationLayout() {
             { label: "Description", control: document.getElementById("editLocationDescription") }
         ],
         afterScanRows: [
+            { label: "Parent Location", control: document.getElementById("editLocationParent") },
             { label: "Category", control: document.getElementById("editLocationCategory") }
         ],
         actions: [
@@ -3997,6 +4054,7 @@ function openLocationActions(id) {
     setElementValue("editLocationDescription", loc.location_description || "");
     setElementValue("editLocationBarcode", loc.barcode || "");
     setElementValue("editLocationNFC", loc.nfc || loc.nfc_tag || "");
+    loadLocationParentOptions("editLocationParent", getLocationParentId(loc), id);
     setElementValue("editLocationCategory", loc.category || "storage");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
     const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) window.hydrateCachedImage?.(previewImg, "location-photos", loc.photo, "../assets/images/folder-icon.jpg"); else previewImg.src = "../assets/images/folder-icon.jpg";
@@ -4010,7 +4068,9 @@ async function saveLocationEdits() {
     if (!isModalDirty("locationActionsModal")) return await showNoChangesDialog("locationActionsModal", "location");
     if (!editingLocationId) return;
     const barcode = document.getElementById("editLocationBarcode").value; const nfc_tag = document.getElementById("editLocationNFC").value; const name = document.getElementById("editLocationName").value;
+    const parent_id = document.getElementById("editLocationParent")?.value || null;
     if (!(await isLocationNameUnique(name, editingLocationId))) return await customAlert("A location with that name already exists. Location names must be unique.", "Duplicate Location");
+    if (wouldCreateLocationCycle(editingLocationId, parent_id)) return await customAlert("A location cannot be moved inside itself or one of its child locations.", "Invalid Parent Location");
     if (barcode && !(await isHardwareTagUnique(barcode, editingLocationId))) return await customAlert("Barcode ID is already registered!", "Duplicate Code");
     if (nfc_tag && !(await isHardwareTagUnique(nfc_tag, editingLocationId))) return await customAlert("NFC Tag is already registered!", "Duplicate Code");
 
@@ -4023,16 +4083,16 @@ async function saveLocationEdits() {
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
-    const payload = { name, description: document.getElementById("editLocationDescription").value, barcode, nfc_tag, category: document.getElementById("editLocationCategory").value, photo_path: photoPath };
+    const payload = { name, description: document.getElementById("editLocationDescription").value, barcode, nfc_tag, category: document.getElementById("editLocationCategory").value, parent_id, photo_path: photoPath };
     const { error } = await withStatus(() => window.db.from("locations").update(payload).eq("id", editingLocationId), "Saving changes...");
-    if (!error) { closeModal('locationActionsModal'); logAction("UPDATE", "Location", name, "Modified folder structure"); await syncAfterWrite(); loadLocationsAdmin(); }
+    if (!error) { closeModal('locationActionsModal'); logAction("UPDATE", "Location", name, "Modified folder structure"); await syncAfterWrite(); if (currentLocationId === "unallocated") await loadUnallocatedItems(); else if (currentLocationId) await loadLocation(currentLocationId); else await loadRootLocations(); }
 }
 
 async function attemptDeleteLocation() {
     if (!window.isAppOnline) return await customAlert("You must be connected to the internet to delete folders.", "Offline Mode");
     if (!editingLocationId) return;
     const loc = locationsAdmin.find(l => l.id === editingLocationId);
-    if (locationsAdmin.some(l => l.parent === editingLocationId)) return await customAlert("Cannot delete: This folder contains sub-folders.", "Folder Not Empty");
+    if (locationsAdmin.some(l => String(getLocationParentId(l) || "") === String(editingLocationId))) return await customAlert("Cannot delete: This folder contains sub-folders.", "Folder Not Empty");
     const items = await localDB.items.where('location_id').equals(editingLocationId).toArray();
     if (items && items.length > 0) return await customAlert("Cannot delete: This folder contains items.", "Folder Not Empty");
     
@@ -4435,6 +4495,7 @@ function openLocationActions(id) {
     setElementValue("editLocationDescription", loc.location_description || "");
     setElementValue("editLocationBarcode", loc.barcode || "");
     setElementValue("editLocationNFC", loc.nfc || loc.nfc_tag || "");
+    loadLocationParentOptions("editLocationParent", getLocationParentId(loc), id);
     setElementValue("editLocationCategory", loc.category || "storage");
     currentEditLocationFile = null; window.locationPhotoDeleted = false;
     const previewImg = document.getElementById("editLocationPreview"); if (loc.photo) window.hydrateCachedImage?.(previewImg, "location-photos", loc.photo, "../assets/images/folder-icon.jpg"); else previewImg.src = "../assets/images/folder-icon.jpg";
@@ -4448,7 +4509,9 @@ async function saveLocationEdits() {
     if (!isModalDirty("locationActionsModal")) return await showNoChangesDialog("locationActionsModal", "location");
     if (!editingLocationId) return;
     const barcode = document.getElementById("editLocationBarcode").value; const nfc_tag = document.getElementById("editLocationNFC").value; const name = document.getElementById("editLocationName").value;
+    const parent_id = document.getElementById("editLocationParent")?.value || null;
     if (!(await isLocationNameUnique(name, editingLocationId))) return await customAlert("A location with that name already exists. Location names must be unique.", "Duplicate Location");
+    if (wouldCreateLocationCycle(editingLocationId, parent_id)) return await customAlert("A location cannot be moved inside itself or one of its child locations.", "Invalid Parent Location");
     if (barcode && !(await isHardwareTagUnique(barcode, editingLocationId))) return await customAlert("Barcode ID is already registered!", "Duplicate Code");
     if (nfc_tag && !(await isHardwareTagUnique(nfc_tag, editingLocationId))) return await customAlert("NFC Tag is already registered!", "Duplicate Code");
 
@@ -4461,16 +4524,16 @@ async function saveLocationEdits() {
         if (!uploadError) photoPath = fileName;
     } else if (window.locationPhotoDeleted) photoPath = null;
 
-    const payload = { name, description: document.getElementById("editLocationDescription").value, barcode, nfc_tag, category: document.getElementById("editLocationCategory").value, photo_path: photoPath };
+    const payload = { name, description: document.getElementById("editLocationDescription").value, barcode, nfc_tag, category: document.getElementById("editLocationCategory").value, parent_id, photo_path: photoPath };
     const { error } = await withStatus(() => window.db.from("locations").update(payload).eq("id", editingLocationId), "Saving changes...");
-    if (!error) { closeModal('locationActionsModal'); logAction("UPDATE", "Location", name, "Modified folder structure"); await syncAfterWrite(); loadLocationsAdmin(); }
+    if (!error) { closeModal('locationActionsModal'); logAction("UPDATE", "Location", name, "Modified folder structure"); await syncAfterWrite(); if (currentLocationId === "unallocated") await loadUnallocatedItems(); else if (currentLocationId) await loadLocation(currentLocationId); else await loadRootLocations(); }
 }
 
 async function attemptDeleteLocation() {
     if (!window.isAppOnline) return await customAlert("You must be connected to the internet to delete folders.", "Offline Mode");
     if (!editingLocationId) return;
     const loc = locationsAdmin.find(l => l.id === editingLocationId);
-    if (locationsAdmin.some(l => l.parent === editingLocationId)) return await customAlert("Cannot delete: This folder contains sub-folders.", "Folder Not Empty");
+    if (locationsAdmin.some(l => String(getLocationParentId(l) || "") === String(editingLocationId))) return await customAlert("Cannot delete: This folder contains sub-folders.", "Folder Not Empty");
     const items = await localDB.items.where('location_id').equals(editingLocationId).toArray();
     if (items && items.length > 0) return await customAlert("Cannot delete: This folder contains items.", "Folder Not Empty");
     if (!(await customConfirm("Are you sure? This cannot be undone.", "Delete Folder?", true))) return;
